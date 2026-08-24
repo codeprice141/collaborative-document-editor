@@ -15,9 +15,15 @@ import {
   Palette,
   Users,
   CheckCircle,
-  Edit2,
-  Sparkles,
-  RefreshCw
+  Bold,
+  Italic,
+  Heading1,
+  Heading2,
+  List,
+  Code,
+  Quote,
+  RefreshCw,
+  Sparkles
 } from "lucide-react";
 
 export default function EditorPage() {
@@ -130,11 +136,36 @@ export default function EditorPage() {
     sendCursor(cursor, false);
   };
 
+  // Text Formatting Helpers
+  const insertFormatting = (prefix, suffix = "") => {
+    if (isReadOnly || !textareaRef.current) return;
+    const textarea = textareaRef.current;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selected = content.substring(start, end);
+    const replacement = `${prefix}${selected || "text"}${suffix}`;
+
+    // Generate replace or insert/delete operation
+    const newContent = content.substring(0, start) + replacement + content.substring(end);
+    if (end > start) {
+      sendOperation({ op_type: "delete", position: start, length: end - start });
+    }
+    sendOperation({ op_type: "insert", position: start, text: replacement });
+
+    setContent(newContent);
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + prefix.length, start + prefix.length + (selected ? selected.length : 4));
+    }, 10);
+  };
+
   const allCollaborators = docMeta?.collaborators || [];
+  const wordsCount = content.trim() ? content.trim().split(/\s+/).length : 0;
+  const charsCount = content.length;
 
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column", backgroundColor: "#f8fafc" }}>
-      {/* Top Navigation Bar */}
+      {/* Top Header */}
       <header style={{
         backgroundColor: "#ffffff", borderBottom: "1px solid #e2e8f0",
         padding: "0.5rem 1.25rem", display: "flex", justifyContent: "space-between", alignItems: "center"
@@ -192,7 +223,7 @@ export default function EditorPage() {
           </div>
         </div>
 
-        {/* Center: Mode Switcher (Document vs Whiteboard) */}
+        {/* Center: Mode Switcher */}
         <div style={{ display: "flex", backgroundColor: "#f1f5f9", padding: "0.25rem", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
           <button
             onClick={() => setActiveTab("text")}
@@ -224,7 +255,7 @@ export default function EditorPage() {
           </button>
         </div>
 
-        {/* Right: Collaborator Avatars & Actions */}
+        {/* Right: Actions */}
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
           {/* Active Collaborator Avatars */}
           <div style={{ display: "flex", alignItems: "center" }}>
@@ -281,11 +312,11 @@ export default function EditorPage() {
         </div>
       </header>
 
-      {/* Main Content Area */}
+      {/* Main Document Workspace */}
       <main style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
         {activeTab === "text" ? (
-          <div style={{ flex: 1, overflowY: "auto", padding: "2rem", display: "flex", flexDirection: "column", alignItems: "center" }}>
-            {/* Live Collaborator Presence Stamps Bar */}
+          <div style={{ flex: 1, overflowY: "auto", padding: "1.5rem 2rem", display: "flex", flexDirection: "column", alignItems: "center" }}>
+            {/* Collaborators Presence & Formatting Bar */}
             <div style={{
               width: "100%", maxWidth: "850px", marginBottom: "0.75rem",
               display: "flex", justifyContent: "space-between", alignItems: "center",
@@ -293,10 +324,61 @@ export default function EditorPage() {
               borderRadius: "8px", border: "1px solid #e2e8f0", fontSize: "0.8125rem",
               boxShadow: "0 1px 2px rgba(0,0,0,0.03)"
             }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
-                <span style={{ fontWeight: "600", color: "#64748b", display: "flex", alignItems: "center", gap: "0.25rem" }}>
-                  <Users size={14} /> Collaborators:
-                </span>
+              {/* Formatting Actions */}
+              <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+                <button
+                  onClick={() => insertFormatting("**", "**")}
+                  style={{ padding: "4px 8px", borderRadius: "4px", border: "1px solid #e2e8f0", backgroundColor: "#fff", cursor: "pointer" }}
+                  title="Bold"
+                >
+                  <Bold size={14} />
+                </button>
+                <button
+                  onClick={() => insertFormatting("*", "*")}
+                  style={{ padding: "4px 8px", borderRadius: "4px", border: "1px solid #e2e8f0", backgroundColor: "#fff", cursor: "pointer" }}
+                  title="Italic"
+                >
+                  <Italic size={14} />
+                </button>
+                <button
+                  onClick={() => insertFormatting("# ")}
+                  style={{ padding: "4px 8px", borderRadius: "4px", border: "1px solid #e2e8f0", backgroundColor: "#fff", cursor: "pointer" }}
+                  title="Heading 1"
+                >
+                  <Heading1 size={14} />
+                </button>
+                <button
+                  onClick={() => insertFormatting("## ")}
+                  style={{ padding: "4px 8px", borderRadius: "4px", border: "1px solid #e2e8f0", backgroundColor: "#fff", cursor: "pointer" }}
+                  title="Heading 2"
+                >
+                  <Heading2 size={14} />
+                </button>
+                <button
+                  onClick={() => insertFormatting("- ")}
+                  style={{ padding: "4px 8px", borderRadius: "4px", border: "1px solid #e2e8f0", backgroundColor: "#fff", cursor: "pointer" }}
+                  title="Bullet List"
+                >
+                  <List size={14} />
+                </button>
+                <button
+                  onClick={() => insertFormatting("```\\n", "\\n```")}
+                  style={{ padding: "4px 8px", borderRadius: "4px", border: "1px solid #e2e8f0", backgroundColor: "#fff", cursor: "pointer" }}
+                  title="Code Block"
+                >
+                  <Code size={14} />
+                </button>
+                <button
+                  onClick={() => insertFormatting("> ")}
+                  style={{ padding: "4px 8px", borderRadius: "4px", border: "1px solid #e2e8f0", backgroundColor: "#fff", cursor: "pointer" }}
+                  title="Quote"
+                >
+                  <Quote size={14} />
+                </button>
+              </div>
+
+              {/* Collaborators Pills */}
+              <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
                 {allCollaborators.map((c) => {
                   const isActive = activeUsers.some((u) => u.email === c.user.email);
                   const activeUserObj = activeUsers.find((u) => u.email === c.user.email);
@@ -319,17 +401,10 @@ export default function EditorPage() {
                         backgroundColor: isActive ? "#22c55e" : "#94a3b8"
                       }} />
                       <span>{c.user.full_name}</span>
-                      <span style={{ fontSize: "0.65rem", opacity: 0.8 }}>({c.role})</span>
                     </div>
                   );
                 })}
               </div>
-
-              {typingUsers.length > 0 && (
-                <span style={{ fontStyle: "italic", color: "#2563eb", fontWeight: "500", animation: "pulse 1s infinite" }}>
-                  ⚡ Live editing in progress...
-                </span>
-              )}
             </div>
 
             {/* Document Sheet */}
@@ -351,7 +426,7 @@ export default function EditorPage() {
                 {Object.entries(remoteCursors).map(([cid, data]) => {
                   const user = activeUsers.find((u) => u.client_id === cid);
                   if (!user) return null;
-                  const leftPos = Math.min(600, ((data.cursor?.index || 0) % 50) * 12);
+                  const leftPos = Math.min(650, ((data.cursor?.index || 0) % 50) * 12);
 
                   return (
                     <div
@@ -396,6 +471,12 @@ export default function EditorPage() {
                   color: "#1e293b", backgroundColor: "transparent"
                 }}
               />
+
+              {/* Footer Stats Bar */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "1rem", borderTop: "1px solid #f1f5f9", marginTop: "2rem", fontSize: "0.75rem", color: "#94a3b8" }}>
+                <span>{wordsCount} words • {charsCount} characters</span>
+                <span>Version {version} • Real-Time OT Vector Clock Sync</span>
+              </div>
             </div>
           </div>
         ) : (

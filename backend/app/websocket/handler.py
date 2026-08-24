@@ -1,15 +1,19 @@
 import json
+import time
 import logging
 from typing import Optional
 from fastapi import WebSocket, WebSocketDisconnect
 from sqlalchemy.orm import Session
 
 from app.core.security import decode_access_token
+from app.core.rate_limiter import ws_rate_limiter
+from app.core.metrics import metrics
 from app.models.user import User
 from app.models.document import Document, CollaboratorRole
 from app.services.document_service import DocumentService
 from app.services.sync_engine import sync_engine
 from app.services.presence_service import presence_service
+from app.services.write_behind_buffer import write_buffer
 from app.websocket.connection_manager import manager
 
 logger = logging.getLogger(__name__)
@@ -53,8 +57,9 @@ async def handle_websocket_connection(
             await websocket.close(code=4003)
             return
 
-        # 3. Accept and register connection
+        # 3. Accept connection and record telemetry
         await manager.connect(document_id, client_id, websocket)
+        metrics.ws_connected()
 
         # 4. Register presence
         user_presence = presence_service.user_joined(
@@ -74,6 +79,7 @@ async def handle_websocket_connection(
             "version": doc.version,
             "user_role": role.value,
             "user_color": user_presence.color,
+            "vector_clock": sync_engine.get_vector_clock(document_id),
             "active_users": presence_service.get_room_presence(document_id),
         }
         await manager.send_personal_message(init_payload, websocket)
@@ -89,9 +95,19 @@ async def handle_websocket_connection(
             exclude_client_id=client_id,
         )
 
-        # 7. Main message loop
+        # 7. Main high-throughput event loop
         while True:
             raw_data = await websocket.receive_text()
+            op_start_time = time.perf_counter()
+
+            # Apply token bucket rate limiting
+            if not ws_rate_limiter.allow(client_id):
+                metrics.record_rate_limited()
+                await manager.send_personal_message(
+                    {"type": "error", "message": "Rate limit exceeded. Please slow down."}, websocket
+                )
+                continue
+
             try:
                 msg = json.loads(raw_data)
             except json.JSONDecodeError:
@@ -100,11 +116,11 @@ async def handle_websocket_connection(
 
             msg_type = msg.get("type")
 
-            # --- Ping / Pong ---
+            # --- Heartbeat Ping / Pong ---
             if msg_type == "ping":
                 await manager.send_personal_message({"type": "pong"}, websocket)
 
-            # --- Edit Operation (OT Synchronization) ---
+            # --- Collaborative Edit Operation (OT & Vector Clocks) ---
             elif msg_type == "operation":
                 if role == CollaboratorRole.VIEWER:
                     await manager.send_personal_message(
@@ -115,7 +131,7 @@ async def handle_websocket_connection(
                 op_data = msg.get("operation", {})
                 op_data["client_id"] = client_id
 
-                # Apply OT on sync engine
+                # Apply OT on sync engine in memory
                 new_content, new_version, transformed_op = sync_engine.process_operation(
                     doc_id=document_id,
                     incoming_op=op_data,
@@ -123,12 +139,14 @@ async def handle_websocket_connection(
                     current_server_version=doc.version,
                 )
 
-                # Update in DB
+                # Update in-memory document state
                 doc.content = new_content
                 doc.version = new_version
-                db.commit()
 
-                # Broadcast operation to all collaborators in room
+                # Buffer write-behind asynchronously to PostgreSQL (Zero DB flood!)
+                write_buffer.mark_dirty(document_id, new_content, new_version)
+
+                # Broadcast transformed operation to all room peers
                 broadcast_msg = {
                     "type": "operation_broadcast",
                     "operation": transformed_op,
@@ -143,11 +161,16 @@ async def handle_websocket_connection(
                         "type": "operation_ack",
                         "client_version": op_data.get("client_version"),
                         "server_version": new_version,
+                        "lamport_ts": transformed_op.get("lamport_ts"),
                     },
                     websocket,
                 )
 
-            # --- Realtime Whiteboard Drawing ---
+                # Record latency metric
+                latency_ms = (time.perf_counter() - op_start_time) * 1000
+                metrics.record_operation(latency_ms)
+
+            # --- Whiteboard Live Drawing ---
             elif msg_type == "draw":
                 if role == CollaboratorRole.VIEWER:
                     await manager.send_personal_message(
@@ -206,12 +229,14 @@ async def handle_websocket_connection(
                         "current_version": doc.version,
                         "current_content": doc.content,
                         "missed_operations": missed_ops,
+                        "vector_clock": sync_engine.get_vector_clock(document_id),
                     },
                     websocket,
                 )
 
     except WebSocketDisconnect:
         manager.disconnect(websocket)
+        metrics.ws_disconnected()
         presence_service.user_left(document_id, client_id)
         if user:
             await manager.broadcast_to_room(
@@ -226,4 +251,5 @@ async def handle_websocket_connection(
     except Exception as exc:
         logger.error("WebSocket unhandled exception: %s", exc)
         manager.disconnect(websocket)
+        metrics.ws_disconnected()
         presence_service.user_left(document_id, client_id)

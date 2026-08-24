@@ -1,15 +1,21 @@
+import time
 import threading
 from typing import Dict, List, Tuple, Optional
 from collections import defaultdict
+from app.core.vector_clock import VectorClock
 
 
 class SyncEngine:
-    """Operational Transformation (OT) engine for real-time text synchronization."""
+    """Production-grade State-Space Operational Transformation (OT) and Vector Clock Synchronization Engine."""
 
     def __init__(self):
         # In-memory history buffer per document: {doc_id: List[op_dict]}
         self._history: Dict[int, List[dict]] = defaultdict(list)
-        # Lock per document for atomic server operation application
+        # Vector clocks per document: {doc_id: {client_id: seq}}
+        self._vector_clocks: Dict[int, Dict[str, int]] = defaultdict(dict)
+        # Global logical Lamport counter per document
+        self._lamport_counters: Dict[int, int] = defaultdict(int)
+        # Lock per document for atomic operation transformation
         self._locks: Dict[int, threading.Lock] = defaultdict(threading.Lock)
 
     def get_lock(self, doc_id: int) -> threading.Lock:
@@ -17,11 +23,11 @@ class SyncEngine:
 
     @staticmethod
     def apply_operation(content: str, op: dict) -> str:
-        """Applies an operation to a text string."""
+        """Applies a character or block operation to a text string with boundary safety."""
         op_type = op.get("op_type")
         pos = int(op.get("position", 0))
 
-        # Clamp position to valid range
+        # Clamp position to valid text bounds
         pos = max(0, min(pos, len(content)))
 
         if op_type == "insert":
@@ -43,7 +49,7 @@ class SyncEngine:
 
     @classmethod
     def transform_op(cls, incoming: dict, historic: dict) -> dict:
-        """Transforms incoming operation against a concurrently applied historic operation (OT)."""
+        """Transforms an incoming operation against a concurrent historic operation (OT)."""
         res = dict(incoming)
         in_type = incoming.get("op_type")
         in_pos = int(incoming.get("position", 0))
@@ -102,36 +108,54 @@ class SyncEngine:
         current_content: str,
         current_server_version: int,
     ) -> Tuple[str, int, dict]:
-        """Atomically transforms incoming operation against missing versions and updates content."""
+        """Atomically applies vector clock tracking and OT transformation."""
         with self.get_lock(doc_id):
+            client_id = incoming_op.get("client_id", "anon")
             client_ver = int(incoming_op.get("client_version", 0))
             history = self._history[doc_id]
 
+            # 1. Update Vector Clock & Lamport counter
+            self._lamport_counters[doc_id] += 1
+            lamport_ts = self._lamport_counters[doc_id]
+            self._vector_clocks[doc_id] = VectorClock.increment(
+                self._vector_clocks[doc_id], client_id
+            )
+
+            # 2. Filter concurrent operations that occurred since client sent this op
             concurrent_ops = [
                 op for op in history if op.get("server_version", 0) > client_ver
             ]
 
+            # 3. Transform incoming op against all concurrent operations
             transformed = dict(incoming_op)
             for c_op in concurrent_ops:
                 transformed = self.transform_op(transformed, c_op)
 
+            # 4. Apply transformed operation to current server document
             new_content = self.apply_operation(current_content, transformed)
             new_version = current_server_version + 1
 
             transformed["server_version"] = new_version
+            transformed["lamport_ts"] = lamport_ts
             transformed["doc_id"] = doc_id
+            transformed["timestamp"] = time.time()
 
+            # 5. Append to ring buffer
             history.append(transformed)
-            if len(history) > 1000:
-                self._history[doc_id] = history[-1000:]
+            if len(history) > 5000:
+                self._history[doc_id] = history[-5000:]
 
             return new_content, new_version, transformed
 
     def get_operations_since(self, doc_id: int, from_version: int) -> List[dict]:
-        """Returns missed operations for reconnect / recovery."""
+        """Returns missed operations for reconnect & recovery."""
         with self.get_lock(doc_id):
             history = self._history[doc_id]
             return [op for op in history if op.get("server_version", 0) > from_version]
+
+    def get_vector_clock(self, doc_id: int) -> Dict[str, int]:
+        with self.get_lock(doc_id):
+            return dict(self._vector_clocks[doc_id])
 
 
 sync_engine = SyncEngine()
