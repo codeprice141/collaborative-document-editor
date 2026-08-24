@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Users, UserPlus, ChevronUp, ChevronDown } from "lucide-react";
 
 export default function CollaboratorDock({
@@ -8,18 +8,39 @@ export default function CollaboratorDock({
   onOpenShare
 }) {
   const [expanded, setExpanded] = useState(false);
+  const dockRef = useRef(null);
+
+  // Auto-close popover when clicking anywhere outside
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (dockRef.current && !dockRef.current.contains(e.target)) {
+        setExpanded(false);
+      }
+    };
+    if (expanded) {
+      document.addEventListener("mousedown", handleOutsideClick);
+      document.addEventListener("touchstart", handleOutsideClick);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("touchstart", handleOutsideClick);
+    };
+  }, [expanded]);
 
   return (
-    <div style={{
-      position: "fixed",
-      bottom: "20px",
-      right: "20px",
-      zIndex: 40,
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "flex-end",
-      gap: "0.5rem"
-    }}>
+    <div
+      ref={dockRef}
+      style={{
+        position: "fixed",
+        bottom: "20px",
+        right: "20px",
+        zIndex: 40,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "flex-end",
+        gap: "0.5rem"
+      }}
+    >
       {/* Expanded Collaborators Popover */}
       {expanded && (
         <div style={{
@@ -27,7 +48,7 @@ export default function CollaboratorDock({
           border: "1px solid var(--border-color)",
           borderRadius: "14px",
           padding: "1rem",
-          boxShadow: "0 20px 25px -5px rgba(0,0,0,0.15)",
+          boxShadow: "0 20px 25px -5px rgba(0,0,0,0.2)",
           width: "260px",
           animation: "fadeIn 0.15s ease-out"
         }}>
@@ -36,7 +57,10 @@ export default function CollaboratorDock({
               Active in Room ({activeUsers.length})
             </span>
             <button
-              onClick={onOpenShare}
+              onClick={() => {
+                setExpanded(false);
+                if (onOpenShare) onOpenShare();
+              }}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -57,7 +81,7 @@ export default function CollaboratorDock({
           </div>
 
           {/* Active Users List */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", maxHeight: "160px", overflowY: "auto" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", maxHeight: "160px", overflowY: "auto" }}>
             {activeUsers.length === 0 ? (
               <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Only you are currently active</span>
             ) : (
@@ -91,19 +115,20 @@ export default function CollaboratorDock({
       )}
 
       {/* Floating Compact Avatar Dock */}
-      <div
+      <button
         onClick={() => setExpanded(!expanded)}
         style={{
           backgroundColor: "var(--bg-surface-glass)",
           backdropFilter: "blur(12px)",
           border: "1px solid var(--border-color)",
           borderRadius: "9999px",
-          padding: "0.3rem 0.6rem",
+          padding: "0.35rem 0.65rem",
           display: "flex",
           alignItems: "center",
-          gap: "0.4rem",
-          boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)",
-          cursor: "pointer"
+          gap: "0.45rem",
+          boxShadow: "0 10px 15px -3px rgba(0,0,0,0.12)",
+          cursor: "pointer",
+          color: "inherit"
         }}
       >
         <div style={{ display: "flex", alignItems: "center" }}>
@@ -136,7 +161,7 @@ export default function CollaboratorDock({
           <span>{activeUsers.length}</span>
           {expanded ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
         </div>
-      </div>
+      </button>
     </div>
   );
 }

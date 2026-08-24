@@ -8,8 +8,7 @@ import {
   Copy,
   Check,
   Globe,
-  Lock,
-  Link as LinkIcon
+  Lock
 } from "lucide-react";
 
 export default function ShareModal({
@@ -28,7 +27,7 @@ export default function ShareModal({
   const [success, setSuccess] = useState("");
   const [copiedLink, setCopiedLink] = useState(false);
   const [publicActive, setPublicActive] = useState(isPublic);
-  const [activePublicRole, setActivePublicRole] = useState(publicRole);
+  const [activePublicRole, setActivePublicRole] = useState(publicRole || "viewer");
 
   const [userSuggestions, setUserSuggestions] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -119,47 +118,49 @@ export default function ShareModal({
   return (
     <div style={{
       position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-      backgroundColor: "rgba(15, 23, 42, 0.6)",
-      backdropFilter: "blur(6px)",
+      backgroundColor: "rgba(15, 23, 42, 0.65)",
+      backdropFilter: "blur(8px)",
       display: "flex", justifyContent: "center", alignItems: "center",
       zIndex: 100, padding: "1rem"
     }}>
       <div style={{
-        backgroundColor: "#ffffff", borderRadius: "16px", padding: "1.75rem",
+        backgroundColor: "var(--bg-surface)",
+        borderRadius: "16px", padding: "1.75rem",
         width: "100%", maxWidth: "520px",
-        boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)",
+        boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)",
+        border: "1px solid var(--border-color)",
         maxHeight: "90vh", overflowY: "auto"
       }}>
         {/* Modal Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <div style={{ padding: "0.5rem", borderRadius: "8px", backgroundColor: "#eff6ff", color: "#2563eb" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+            <div style={{ padding: "0.5rem", borderRadius: "10px", backgroundColor: "#eff6ff", color: "#2563eb" }}>
               <UserPlus size={20} />
             </div>
             <div>
-              <h3 style={{ fontSize: "1.125rem", fontWeight: "700", color: "#0f172a" }}>Share Document</h3>
-              <p style={{ fontSize: "0.75rem", color: "#64748b" }}>Manage access, public links and permissions</p>
+              <h3 style={{ fontSize: "1.15rem", fontWeight: "700", color: "var(--text-primary)" }}>Share Document</h3>
+              <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Manage access, public link and collaborator roles</p>
             </div>
           </div>
-          <button onClick={onClose} style={{ border: "none", background: "none", cursor: "pointer", color: "#94a3b8" }}>
+          <button onClick={onClose} style={{ border: "none", background: "none", cursor: "pointer", color: "var(--text-secondary)" }}>
             <X size={20} />
           </button>
         </div>
 
         {/* Public Share Link Card */}
         <div style={{
-          backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "12px",
+          backgroundColor: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: "12px",
           padding: "1rem", marginBottom: "1.25rem"
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              {publicActive ? <Globe size={18} color="#16a34a" /> : <Lock size={18} color="#64748b" />}
+              {publicActive ? <Globe size={18} color="#16a34a" /> : <Lock size={18} color="var(--text-secondary)" />}
               <div>
-                <div style={{ fontSize: "0.875rem", fontWeight: "700", color: "#0f172a" }}>
-                  {publicActive ? "Public Link Enabled" : "Restricted Link"}
+                <div style={{ fontSize: "0.875rem", fontWeight: "700", color: "var(--text-primary)" }}>
+                  {publicActive ? "Public Link Active" : "Restricted Access"}
                 </div>
-                <div style={{ fontSize: "0.75rem", color: "#64748b" }}>
-                  {publicActive ? "Anyone with link can access" : "Only invited collaborators can access"}
+                <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+                  {publicActive ? "Anyone with this link can access" : "Only invited collaborators can access"}
                 </div>
               </div>
             </div>
@@ -168,53 +169,56 @@ export default function ShareModal({
               onClick={() => handleTogglePublicLink(!publicActive)}
               style={{
                 padding: "0.35rem 0.75rem", borderRadius: "6px",
-                border: "1px solid #cbd5e1", backgroundColor: publicActive ? "#dcfce7" : "#ffffff",
-                color: publicActive ? "#166534" : "#475569", fontSize: "0.75rem", fontWeight: "700",
+                border: "1px solid var(--border-color)",
+                backgroundColor: publicActive ? "#dcfce7" : "var(--bg-surface)",
+                color: publicActive ? "#166534" : "var(--text-primary)", fontSize: "0.75rem", fontWeight: "700",
                 cursor: "pointer"
               }}
             >
-              {publicActive ? "Public On ✓" : "Turn On Link"}
+              {publicActive ? "Public Enabled ✓" : "Enable Public Link"}
             </button>
           </div>
 
           {publicActive && (
-            <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", borderTop: "1px solid #e2e8f0", paddingTop: "0.75rem" }}>
+            <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", borderTop: "1px solid var(--border-color)", paddingTop: "0.75rem", flexWrap: "wrap" }}>
               <select
                 value={activePublicRole}
                 onChange={(e) => handlePublicRoleChange(e.target.value)}
                 style={{
-                  padding: "0.35rem 0.6rem", borderRadius: "6px",
-                  border: "1px solid #cbd5e1", fontSize: "0.75rem", backgroundColor: "#fff"
+                  padding: "0.45rem 0.75rem", borderRadius: "8px",
+                  fontSize: "0.8125rem", fontWeight: "600",
+                  backgroundColor: "var(--bg-surface)", color: "var(--text-primary)",
+                  border: "1px solid var(--border-color)", outline: "none", cursor: "pointer"
                 }}
               >
-                <option value="viewer">Can View</option>
-                <option value="editor">Can Edit</option>
+                <option value="viewer">Can View (Read-only)</option>
+                <option value="editor">Can Edit (Collaborator)</option>
               </select>
 
               <button
                 onClick={handleCopyPublicLink}
                 style={{
                   flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.35rem",
-                  padding: "0.4rem 0.75rem", borderRadius: "6px", border: "1px solid #2563eb",
-                  backgroundColor: copiedLink ? "#dbeafe" : "#2563eb",
-                  color: copiedLink ? "#1e40af" : "#ffffff", fontSize: "0.8125rem", fontWeight: "600",
-                  cursor: "pointer"
+                  padding: "0.45rem 0.75rem", borderRadius: "8px", border: "none",
+                  backgroundColor: copiedLink ? "#16a34a" : "#2563eb",
+                  color: "#ffffff", fontSize: "0.8125rem", fontWeight: "600",
+                  cursor: "pointer", minWidth: "160px"
                 }}
               >
-                {copiedLink ? <Check size={14} /> : <Copy size={14} />}
+                {copiedLink ? <Check size={15} /> : <Copy size={15} />}
                 <span>{copiedLink ? "Link Copied to Clipboard!" : "Copy Public Link"}</span>
               </button>
             </div>
           )}
         </div>
 
-        {error && <div style={{ backgroundColor: "#fef2f2", color: "#b91c1c", padding: "0.6rem", borderRadius: "8px", fontSize: "0.875rem", marginBottom: "1rem" }}>{error}</div>}
-        {success && <div style={{ backgroundColor: "#f0fdf4", color: "#15803d", padding: "0.6rem", borderRadius: "8px", fontSize: "0.875rem", marginBottom: "1rem" }}>{success}</div>}
+        {error && <div style={{ backgroundColor: "#fef2f2", color: "#b91c1c", padding: "0.6rem", borderRadius: "8px", fontSize: "0.875rem", marginBottom: "1rem", border: "1px solid #fecaca" }}>{error}</div>}
+        {success && <div style={{ backgroundColor: "#f0fdf4", color: "#15803d", padding: "0.6rem", borderRadius: "8px", fontSize: "0.875rem", marginBottom: "1rem", border: "1px solid #bbf7d0" }}>{success}</div>}
 
-        {/* Invite Teammate Form */}
+        {/* Invite Form */}
         <form onSubmit={handleShare} style={{ marginBottom: "1.5rem", position: "relative" }}>
-          <div style={{ display: "flex", gap: "0.5rem" }}>
-            <div style={{ position: "relative", flex: 1 }}>
+          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+            <div style={{ position: "relative", flex: "1 1 200px" }}>
               <input
                 type="email"
                 placeholder="Search or enter teammate email..."
@@ -226,7 +230,7 @@ export default function ShareModal({
                 required
                 style={{
                   width: "100%", padding: "0.55rem 0.75rem", borderRadius: "8px",
-                  border: "1px solid #cbd5e1", fontSize: "0.875rem", outline: "none"
+                  fontSize: "0.875rem", outline: "none"
                 }}
               />
             </div>
@@ -236,7 +240,9 @@ export default function ShareModal({
               onChange={(e) => setRole(e.target.value)}
               style={{
                 padding: "0.55rem 0.75rem", borderRadius: "8px",
-                border: "1px solid #cbd5e1", fontSize: "0.875rem", backgroundColor: "#fff"
+                fontSize: "0.875rem", fontWeight: "600", cursor: "pointer",
+                backgroundColor: "var(--bg-surface)", color: "var(--text-primary)",
+                border: "1px solid var(--border-color)"
               }}
             >
               <option value="editor">Editor</option>
@@ -260,9 +266,9 @@ export default function ShareModal({
           {userSuggestions.length > 0 && (
             <div style={{
               position: "absolute", top: "100%", left: 0, right: 0,
-              backgroundColor: "#ffffff", borderRadius: "8px",
-              boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)",
-              border: "1px solid #e2e8f0", zIndex: 20, marginTop: "4px",
+              backgroundColor: "var(--bg-surface)", borderRadius: "8px",
+              boxShadow: "0 10px 20px rgba(0,0,0,0.15)",
+              border: "1px solid var(--border-color)", zIndex: 20, marginTop: "4px",
               maxHeight: "150px", overflowY: "auto"
             }}>
               {userSuggestions.map((u) => (
@@ -272,13 +278,13 @@ export default function ShareModal({
                   style={{
                     padding: "0.5rem 0.75rem", cursor: "pointer",
                     display: "flex", justifyContent: "space-between", alignItems: "center",
-                    borderBottom: "1px solid #f1f5f9"
+                    borderBottom: "1px solid var(--border-color)"
                   }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f8fafc"}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#ffffff"}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "var(--bg-primary)"}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
                 >
-                  <span style={{ fontWeight: "500", fontSize: "0.875rem" }}>{u.full_name}</span>
-                  <span style={{ color: "#64748b", fontSize: "0.75rem" }}>{u.email}</span>
+                  <span style={{ fontWeight: "600", fontSize: "0.875rem", color: "var(--text-primary)" }}>{u.full_name}</span>
+                  <span style={{ color: "var(--text-secondary)", fontSize: "0.75rem" }}>{u.email}</span>
                 </div>
               ))}
             </div>
@@ -287,15 +293,15 @@ export default function ShareModal({
 
         {/* Collaborators List */}
         <div>
-          <h4 style={{ fontSize: "0.875rem", fontWeight: "700", color: "#475569", marginBottom: "0.75rem" }}>
+          <h4 style={{ fontSize: "0.875rem", fontWeight: "700", color: "var(--text-primary)", marginBottom: "0.75rem" }}>
             Collaborators ({collaborators.length})
           </h4>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
             {collaborators.map((c) => (
               <div key={c.id} style={{
                 display: "flex", justifyContent: "space-between", alignItems: "center",
-                padding: "0.6rem 0.75rem", borderRadius: "8px", backgroundColor: "#f8fafc",
-                border: "1px solid #e2e8f0"
+                padding: "0.6rem 0.75rem", borderRadius: "10px", backgroundColor: "var(--bg-primary)",
+                border: "1px solid var(--border-color)"
               }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
                   <div style={{
@@ -305,13 +311,13 @@ export default function ShareModal({
                     display: "flex", alignItems: "center", justifyContent: "center",
                     fontWeight: "700", fontSize: "0.8125rem"
                   }}>
-                    {c.user.full_name.charAt(0).toUpperCase()}
+                    {c.user?.full_name?.charAt(0).toUpperCase() || "U"}
                   </div>
                   <div>
-                    <div style={{ fontWeight: "600", fontSize: "0.875rem", color: "#0f172a" }}>
-                      {c.user.full_name} {c.user.id === currentUser?.id && "(You)"}
+                    <div style={{ fontWeight: "600", fontSize: "0.875rem", color: "var(--text-primary)" }}>
+                      {c.user?.full_name} {c.user?.id === currentUser?.id && "(You)"}
                     </div>
-                    <div style={{ fontSize: "0.75rem", color: "#64748b" }}>{c.user.email}</div>
+                    <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>{c.user?.email}</div>
                   </div>
                 </div>
 
@@ -320,7 +326,7 @@ export default function ShareModal({
                     fontSize: "0.75rem", padding: "0.2rem 0.55rem", borderRadius: "9999px",
                     backgroundColor: c.role === "owner" ? "#dbeafe" : c.role === "editor" ? "#dcfce7" : "#f1f5f9",
                     color: c.role === "owner" ? "#1e40af" : c.role === "editor" ? "#166534" : "#475569",
-                    fontWeight: "600", textTransform: "capitalize"
+                    fontWeight: "700", textTransform: "capitalize"
                   }}>
                     {c.role}
                   </span>

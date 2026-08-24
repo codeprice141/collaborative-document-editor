@@ -179,9 +179,10 @@ export default function RichTextEditor({
       display: "flex",
       flexDirection: "column",
       width: "100%",
-      maxWidth: "860px",
+      maxWidth: "880px",
+      margin: "0 auto",
       alignItems: "center",
-      paddingBottom: "25vh",
+      paddingBottom: "30vh",
       position: "relative"
     }}>
       {/* Floating Mini Action for Selected Text */}
@@ -195,7 +196,7 @@ export default function RichTextEditor({
           backgroundColor: "#0f172a",
           borderRadius: "8px",
           padding: "4px 8px",
-          boxShadow: "0 10px 15px -3px rgba(0,0,0,0.2)",
+          boxShadow: "0 10px 15px -3px rgba(0,0,0,0.25)",
           display: "flex",
           alignItems: "center",
           gap: "4px",
@@ -222,96 +223,96 @@ export default function RichTextEditor({
         </div>
       )}
 
-      {/* Sticky Responsive Rich Toolbar */}
+      {/* Modern High-End Padded Formatting Toolbar */}
       {!isReadOnly && (
         <div style={{
           position: "sticky",
-          top: "8px",
+          top: "12px",
           zIndex: 20,
           backgroundColor: "var(--bg-surface-glass)",
           backdropFilter: "blur(12px)",
           border: "1px solid var(--border-color)",
-          borderRadius: "12px",
-          padding: "0.3rem 0.4rem",
+          borderRadius: "14px",
+          padding: "0.45rem 0.65rem",
           display: "flex",
           alignItems: "center",
-          gap: "0.2rem",
-          boxShadow: "0 10px 25px -5px rgba(0,0,0,0.08)",
-          marginBottom: "1.25rem",
+          gap: "0.35rem",
+          boxShadow: "0 10px 25px -5px rgba(0,0,0,0.08), 0 4px 6px -2px rgba(0,0,0,0.03)",
+          marginBottom: "1.75rem",
           maxWidth: "100%",
           overflowX: "auto",
           WebkitOverflowScrolling: "touch"
         }}>
           {/* Text Styles */}
-          <div style={{ display: "flex", gap: "2px", borderRight: "1px solid var(--border-color)", paddingRight: "0.3rem", flexShrink: 0 }}>
-            <button onClick={() => exec("bold")} style={toolBtn(activeStyles.bold)} title="Bold">
-              <Bold size={15} />
+          <div style={{ display: "flex", gap: "3px", borderRight: "1px solid var(--border-color)", paddingRight: "0.45rem", flexShrink: 0 }}>
+            <button onClick={() => exec("bold")} style={toolBtn(activeStyles.bold)} title="Bold (Ctrl+B)">
+              <Bold size={16} />
             </button>
-            <button onClick={() => exec("italic")} style={toolBtn(activeStyles.italic)} title="Italic">
-              <Italic size={15} />
+            <button onClick={() => exec("italic")} style={toolBtn(activeStyles.italic)} title="Italic (Ctrl+I)">
+              <Italic size={16} />
             </button>
-            <button onClick={() => exec("underline")} style={toolBtn(activeStyles.underline)} title="Underline">
-              <Underline size={15} />
+            <button onClick={() => exec("underline")} style={toolBtn(activeStyles.underline)} title="Underline (Ctrl+U)">
+              <Underline size={16} />
             </button>
             <button onClick={() => exec("strikeThrough")} style={toolBtn(activeStyles.strikeThrough)} title="Strikethrough">
-              <Strikethrough size={15} />
+              <Strikethrough size={16} />
             </button>
           </div>
 
           {/* Headings */}
-          <div style={{ display: "flex", gap: "2px", borderRight: "1px solid var(--border-color)", paddingRight: "0.3rem", flexShrink: 0 }}>
+          <div style={{ display: "flex", gap: "3px", borderRight: "1px solid var(--border-color)", paddingRight: "0.45rem", flexShrink: 0 }}>
             <button onClick={() => exec("formatBlock", "<h1>")} style={toolBtn(activeStyles.h1)} title="Heading 1">
-              <Heading1 size={15} />
+              <Heading1 size={16} />
             </button>
             <button onClick={() => exec("formatBlock", "<h2>")} style={toolBtn(activeStyles.h2)} title="Heading 2">
-              <Heading2 size={15} />
+              <Heading2 size={16} />
             </button>
             <button onClick={() => exec("formatBlock", "<h3>")} style={toolBtn(activeStyles.h3)} title="Heading 3">
-              <Heading3 size={15} />
+              <Heading3 size={16} />
             </button>
             <button onClick={() => exec("formatBlock", "<p>")} style={toolBtn(activeStyles.p)} title="Paragraph">
-              <span style={{ fontSize: "0.8125rem", fontWeight: "700", padding: "0 2px" }}>P</span>
+              <span style={{ fontSize: "0.85rem", fontWeight: "700", padding: "0 2px" }}>P</span>
             </button>
           </div>
 
           {/* Lists & Quotes */}
-          <div style={{ display: "flex", gap: "2px", borderRight: "1px solid var(--border-color)", paddingRight: "0.3rem", flexShrink: 0 }}>
+          <div style={{ display: "flex", gap: "3px", borderRight: "1px solid var(--border-color)", paddingRight: "0.45rem", flexShrink: 0 }}>
             <button onClick={() => exec("insertUnorderedList")} style={toolBtn(activeStyles.ul)} title="Bullet List">
-              <List size={15} />
+              <List size={16} />
             </button>
             <button onClick={() => exec("insertOrderedList")} style={toolBtn(activeStyles.ol)} title="Numbered List">
-              <ListOrdered size={15} />
+              <ListOrdered size={16} />
             </button>
             <button onClick={() => exec("formatBlock", "<blockquote>")} style={toolBtn(activeStyles.quote)} title="Quote Block">
-              <Quote size={15} />
+              <Quote size={16} />
             </button>
             <button onClick={() => exec("formatBlock", "<pre>")} style={toolBtn(activeStyles.code)} title="Code Block">
-              <Code size={15} />
+              <Code size={16} />
             </button>
           </div>
 
           {/* Alignment */}
-          <div style={{ display: "flex", gap: "2px", borderRight: "1px solid var(--border-color)", paddingRight: "0.3rem", flexShrink: 0 }}>
+          <div style={{ display: "flex", gap: "3px", borderRight: "1px solid var(--border-color)", paddingRight: "0.45rem", flexShrink: 0 }}>
             <button onClick={() => exec("justifyLeft")} style={toolBtn(activeStyles.justifyLeft)} title="Align Left">
-              <AlignLeft size={15} />
+              <AlignLeft size={16} />
             </button>
             <button onClick={() => exec("justifyCenter")} style={toolBtn(activeStyles.justifyCenter)} title="Align Center">
-              <AlignCenter size={15} />
+              <AlignCenter size={16} />
             </button>
             <button onClick={() => exec("justifyRight")} style={toolBtn(activeStyles.justifyRight)} title="Align Right">
-              <AlignRight size={15} />
+              <AlignRight size={16} />
             </button>
           </div>
 
           {/* Highlights */}
-          <div style={{ display: "flex", alignItems: "center", gap: "3px", paddingLeft: "0.2rem", flexShrink: 0 }}>
-            <Highlighter size={13} color="var(--text-secondary)" />
+          <div style={{ display: "flex", alignItems: "center", gap: "4px", paddingLeft: "0.25rem", flexShrink: 0 }}>
+            <Highlighter size={14} color="var(--text-secondary)" />
             {HIGHLIGHT_COLORS.map((c) => (
               <button
                 key={c}
                 onClick={() => exec("hiliteColor", c)}
                 style={{
-                  width: "14px", height: "14px", borderRadius: "50%",
+                  width: "16px", height: "16px", borderRadius: "50%",
                   backgroundColor: c, border: "1px solid var(--border-color)",
                   cursor: "pointer", padding: 0
                 }}
@@ -319,21 +320,21 @@ export default function RichTextEditor({
               />
             ))}
             <button onClick={() => exec("removeFormat")} style={{ ...toolBtn(false), marginLeft: "2px" }} title="Clear Formatting">
-              <RemoveFormatting size={14} />
+              <RemoveFormatting size={15} />
             </button>
           </div>
         </div>
       )}
 
-      {/* Infinite Responsive Document Page */}
+      {/* Infinite Expanding Document Surface */}
       <div style={{
         width: "100%",
-        minHeight: "calc(100vh - 180px)",
+        minHeight: "850px",
         height: "auto",
         backgroundColor: "var(--bg-surface)",
-        borderRadius: "14px",
-        boxShadow: "0 10px 25px -5px rgba(0,0,0,0.05)",
-        padding: "clamp(1.25rem, 4vw, 3.5rem) clamp(1rem, 5vw, 4rem)",
+        borderRadius: "16px",
+        boxShadow: "0 10px 30px -5px rgba(0,0,0,0.06), 0 4px 6px -2px rgba(0,0,0,0.02)",
+        padding: "clamp(2rem, 5vw, 4rem) clamp(1.5rem, 6vw, 4.5rem) 150px clamp(1.5rem, 6vw, 4.5rem)",
         position: "relative",
         border: "1px solid var(--border-color)",
         display: "flex",
@@ -357,9 +358,9 @@ export default function RichTextEditor({
                   left: `${leftPos}px`,
                   backgroundColor: user.color || "#2563eb",
                   color: "#ffffff",
-                  padding: "2px 7px",
-                  borderRadius: "5px",
-                  fontSize: "0.7rem",
+                  padding: "2px 8px",
+                  borderRadius: "6px",
+                  fontSize: "0.725rem",
                   fontWeight: "700",
                   pointerEvents: "none",
                   transition: "left 0.15s ease",
@@ -377,7 +378,7 @@ export default function RichTextEditor({
           })}
         </div>
 
-        {/* Contenteditable Rich Surface */}
+        {/* Contenteditable Rich Surface - Always expands inside the white sheet */}
         <div
           ref={editorRef}
           contentEditable={!isReadOnly}
@@ -385,17 +386,6 @@ export default function RichTextEditor({
           onKeyUp={sendCursorPosition}
           onMouseUp={sendCursorPosition}
           onClick={sendCursorPosition}
-          style={{
-            flex: 1,
-            outline: "none",
-            fontSize: "1.05rem",
-            lineHeight: "1.85",
-            color: "var(--text-primary)",
-            fontFamily: "inherit",
-            minHeight: "350px",
-            wordBreak: "break-word",
-            overflowWrap: "break-word"
-          }}
           className="rich-document-body"
         />
       </div>
@@ -404,9 +394,10 @@ export default function RichTextEditor({
 }
 
 const toolBtn = (isActive) => ({
-  padding: "0.3rem 0.4rem",
-  borderRadius: "6px",
-  border: isActive ? "1px solid #bfdbfe" : "1px solid transparent",
+  width: "32px",
+  height: "32px",
+  borderRadius: "8px",
+  border: isActive ? "1px solid #93c5fd" : "1px solid transparent",
   backgroundColor: isActive ? "#eff6ff" : "transparent",
   color: isActive ? "#2563eb" : "var(--text-secondary)",
   fontWeight: isActive ? "700" : "500",

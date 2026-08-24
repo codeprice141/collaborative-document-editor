@@ -176,20 +176,20 @@ export default function EditorPage() {
         </div>
       )}
 
-      {/* Responsive Top Bar */}
+      {/* Modern Fixed Header (Never Wraps) */}
       <header style={{
         backgroundColor: "var(--bg-surface)",
         borderBottom: "1px solid var(--border-color)",
-        padding: "0.5rem 1rem",
+        padding: "0.45rem 1rem",
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
         zIndex: 30,
-        flexWrap: "wrap",
-        gap: "0.5rem"
+        height: "56px",
+        flexShrink: 0
       }}>
         {/* Left: Back & Editable Title */}
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", minWidth: 0, flex: "1 1 auto" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", minWidth: 0, flex: "0 1 auto" }}>
           <Link
             to="/dashboard"
             style={{
@@ -224,7 +224,7 @@ export default function EditorPage() {
                 border: "1px solid transparent",
                 background: "transparent",
                 outline: "none",
-                maxWidth: "180px",
+                width: "clamp(100px, 18vw, 220px)",
                 padding: "2px 4px",
                 borderRadius: "6px",
                 overflow: "hidden",
@@ -234,20 +234,21 @@ export default function EditorPage() {
               onFocus={(e) => e.target.style.borderColor = "#93c5fd"}
             />
             {titleSaved && (
-              <span style={{ display: "flex", alignItems: "center", gap: "0.2rem", fontSize: "0.75rem", color: "#16a34a", fontWeight: "600", flexShrink: 0 }}>
+              <span className="hidden-mobile" style={{ display: "flex", alignItems: "center", gap: "0.2rem", fontSize: "0.75rem", color: "#16a34a", fontWeight: "600", flexShrink: 0 }}>
                 <CheckCircle size={12} /> Saved
               </span>
             )}
           </div>
         </div>
 
-        {/* Center: Mode Switcher Tabs */}
+        {/* Center: Mode Switcher Tabs in Top Bar */}
         <div style={{
           display: "flex",
           backgroundColor: "var(--bg-primary)",
           padding: "0.2rem",
           borderRadius: "10px",
-          border: "1px solid var(--border-color)"
+          border: "1px solid var(--border-color)",
+          flexShrink: 0
         }}>
           <button
             onClick={() => setActiveTab("text")}
@@ -292,7 +293,7 @@ export default function EditorPage() {
         </div>
 
         {/* Right: Actions */}
-        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexShrink: 0 }}>
           {/* Theme Toggle */}
           <button
             onClick={toggleTheme}

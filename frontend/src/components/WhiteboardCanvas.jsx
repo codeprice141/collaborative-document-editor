@@ -160,7 +160,6 @@ export default function WhiteboardCanvas({
 
     ctx.clearRect(0, 0, rect.width, rect.height);
 
-    // Background Fill
     ctx.fillStyle = isDark ? "#131b2e" : "#ffffff";
     ctx.fillRect(0, 0, rect.width, rect.height);
 
@@ -498,21 +497,19 @@ export default function WhiteboardCanvas({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
-      {/* Top Floating Control Bar - Responsive & Scrollable */}
+      {/* Smart Responsive Floating Toolbar - Never awkwardly scrolls horizontally! */}
       <div style={{
         position: "absolute", top: "12px", left: "50%", transform: "translateX(-50%)",
         backgroundColor: "var(--bg-surface-glass)",
         backdropFilter: "blur(12px)",
-        padding: "0.35rem 0.65rem", borderRadius: "14px",
+        padding: "0.4rem 0.65rem", borderRadius: "16px",
         boxShadow: "0 10px 25px -5px rgba(0,0,0,0.15)",
-        display: "flex", alignItems: "center", gap: "0.4rem", zIndex: 10,
+        display: "flex", flexWrap: "wrap", justifyContent: "center", alignItems: "center", gap: "0.45rem", zIndex: 10,
         border: "1px solid var(--border-color)",
         maxWidth: "96%",
-        overflowX: "auto",
-        WebkitOverflowScrolling: "touch"
       }}>
-        {/* Tool Selectors */}
-        <div style={{ display: "flex", gap: "2px", borderRight: "1px solid var(--border-color)", paddingRight: "0.4rem", flexShrink: 0 }}>
+        {/* Tier 1: Shape Tools */}
+        <div style={{ display: "flex", gap: "2px", alignItems: "center", borderRight: "1px solid var(--border-color)", paddingRight: "0.4rem" }}>
           <button onClick={() => setTool("select")} style={toolBtn(tool === "select")} title="Select / Move Shape">
             <MousePointer size={16} />
           </button>
@@ -542,8 +539,8 @@ export default function WhiteboardCanvas({
           </button>
         </div>
 
-        {/* Color Palette */}
-        <div style={{ display: "flex", gap: "4px", alignItems: "center", borderRight: "1px solid var(--border-color)", paddingRight: "0.4rem", flexShrink: 0 }}>
+        {/* Tier 2: Color Palette & Stroke */}
+        <div style={{ display: "flex", gap: "4px", alignItems: "center", borderRight: "1px solid var(--border-color)", paddingRight: "0.4rem" }}>
           {COLORS.map((c) => (
             <button
               key={c}
@@ -567,23 +564,19 @@ export default function WhiteboardCanvas({
           >
             <PaintBucket size={14} />
           </button>
-        </div>
-
-        {/* Thickness Slider */}
-        <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", borderRight: "1px solid var(--border-color)", paddingRight: "0.4rem", flexShrink: 0 }}>
           <input
             type="range"
             min={1}
             max={8}
             value={strokeWidth}
             onChange={(e) => setStrokeWidth(parseInt(e.target.value, 10))}
-            style={{ width: "45px", cursor: "pointer" }}
+            style={{ width: "40px", cursor: "pointer" }}
             title="Stroke Width"
           />
         </div>
 
-        {/* Actions & Delete Tool */}
-        <div style={{ display: "flex", gap: "2px", flexShrink: 0 }}>
+        {/* Tier 3: Actions & History */}
+        <div style={{ display: "flex", gap: "2px", alignItems: "center" }}>
           {selectedId && (
             <button onClick={deleteSelectedElement} style={{ ...toolBtn(false), color: "#dc2626" }} title="Delete Selected">
               <Trash2 size={15} />
@@ -635,7 +628,7 @@ export default function WhiteboardCanvas({
         </button>
       </div>
 
-      {/* Infinite Canvas */}
+      {/* Canvas Viewport */}
       <div
         style={{
           flex: 1, backgroundColor: "var(--bg-surface)", borderRadius: "14px",
