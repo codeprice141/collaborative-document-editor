@@ -47,3 +47,18 @@ def login(login_in: UserLogin, db: Session = Depends(get_db)):
 def get_current_user_profile(current_user: User = Depends(get_current_user)):
     """Returns profile information for the authenticated user."""
     return current_user
+
+
+@router.get("/users", response_model=list[UserResponse])
+def search_users(
+    q: str = "",
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Search for team members by email or name to easily share documents."""
+    query = db.query(User).filter(User.is_active == True)
+    if q:
+        query = query.filter(
+            (User.email.ilike(f"%{q}%")) | (User.full_name.ilike(f"%{q}%"))
+        )
+    return query.limit(10).all()

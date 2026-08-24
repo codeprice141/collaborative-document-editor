@@ -1,17 +1,20 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 
-export function useCollaboration(docId) {
+export function useCollaboration(docId, onRemoteDraw) {
   const [content, setContent] = useState("");
   const [version, setVersion] = useState(0);
   const [activeUsers, setActiveUsers] = useState([]);
   const [userRole, setUserRole] = useState("editor");
   const [myColor, setMyColor] = useState("#2563eb");
   const [remoteCursors, setRemoteCursors] = useState({});
-  const [connectionStatus, setConnectionStatus] = useState("connecting"); // "connected" | "connecting" | "disconnected"
+  const [connectionStatus, setConnectionStatus] = useState("connecting");
+  const [typingUsers, setTypingUsers] = useState([]);
   const wsRef = useRef(null);
   const contentRef = useRef(content);
   const versionRef = useRef(version);
+  const drawCallbackRef = useRef(onRemoteDraw);
 
+  drawCallbackRef.current = onRemoteDraw;
   contentRef.current = content;
   versionRef.current = version;
 
@@ -21,9 +24,7 @@ export function useCollaboration(docId) {
 
     setConnectionStatus("connecting");
     const clientId = "client_" + Math.random().toString(36).substring(2, 8);
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const host = import.meta.env.VITE_WS_HOST || window.location.host;
-    const wsUrl = `${protocol}//${host}/api/v1/ws/documents/${docId}?token=${token}&client_id=${clientId}`;
+    const wsUrl = `ws://localhost:8000/api/v1/ws/documents/${docId}?token=${token}&client_id=${clientId}`;
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
@@ -80,6 +81,23 @@ export function useCollaboration(docId) {
                 isTyping: data.is_typing,
               },
             }));
+
+            // Track who is actively typing
+            if (data.is_typing) {
+              setTypingUsers((prev) => {
+                const found = data.user_id;
+                return prev.includes(found) ? prev : [...prev, found];
+              });
+              setTimeout(() => {
+                setTypingUsers((prev) => prev.filter((id) => id !== data.user_id));
+              }, 2500);
+            }
+            break;
+
+          case "draw_broadcast":
+            if (drawCallbackRef.current) {
+              drawCallbackRef.current(data.stroke, data.user_color, data.user_name);
+            }
             break;
 
           case "sync_recovery":
@@ -134,6 +152,17 @@ export function useCollaboration(docId) {
     }
   }, []);
 
+  const sendDraw = useCallback((stroke) => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(
+        JSON.stringify({
+          type: "draw",
+          stroke,
+        })
+      );
+    }
+  }, []);
+
   return {
     content,
     setContent,
@@ -142,8 +171,10 @@ export function useCollaboration(docId) {
     myColor,
     activeUsers,
     remoteCursors,
+    typingUsers,
     connectionStatus,
     sendOperation,
     sendCursor,
+    sendDraw,
   };
 }

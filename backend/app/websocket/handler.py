@@ -147,6 +147,28 @@ async def handle_websocket_connection(
                     websocket,
                 )
 
+            # --- Realtime Whiteboard Drawing ---
+            elif msg_type == "draw":
+                if role == CollaboratorRole.VIEWER:
+                    await manager.send_personal_message(
+                        {"type": "error", "message": "Viewers cannot draw on document"}, websocket
+                    )
+                    continue
+
+                stroke_data = msg.get("stroke")
+                await manager.broadcast_to_room(
+                    document_id,
+                    {
+                        "type": "draw_broadcast",
+                        "stroke": stroke_data,
+                        "client_id": client_id,
+                        "user_id": user.id,
+                        "user_name": user.full_name,
+                        "user_color": user_presence.color,
+                    },
+                    exclude_client_id=client_id,
+                )
+
             # --- Live Cursors & Selection Presence ---
             elif msg_type == "cursor":
                 cursor_pos = msg.get("cursor")

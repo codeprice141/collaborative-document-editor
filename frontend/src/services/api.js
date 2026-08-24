@@ -41,6 +41,14 @@ export const api = {
     return handleResponse(res, "Login failed");
   },
 
+
+  async searchUsers(query = "") {
+    const res = await fetch(`${API_BASE}/auth/users?q=${encodeURIComponent(query)}`, {
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(res, "Failed to search users");
+  },
+
   async getMe() {
     const res = await fetch(`${API_BASE}/auth/me`, {
       headers: getAuthHeaders(),

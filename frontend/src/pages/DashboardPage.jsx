@@ -2,12 +2,15 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../services/api";
 import Navbar from "../components/Navbar";
-import { Plus, FileText, Clock, Search, Trash2, ShieldCheck, Edit3, Eye } from "lucide-react";
+import { Plus, FileText, Clock, Search, Trash2, ShieldCheck, Edit3, Eye, X, Sparkles } from "lucide-react";
 
 export default function DashboardPage() {
   const [documents, setDocuments] = useState([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newInitialContent, setNewInitialContent] = useState("");
   const [creating, setCreating] = useState(false);
   const navigate = useNavigate();
 
@@ -26,10 +29,16 @@ export default function DashboardPage() {
     loadDocs();
   }, []);
 
-  const handleCreate = async () => {
+  const handleCreateSubmit = async (e) => {
+    e.preventDefault();
     setCreating(true);
+    const titleToSave = newTitle.trim() || "Untitled Document";
+
     try {
-      const newDoc = await api.createDocument("Untitled Document", "");
+      const newDoc = await api.createDocument(titleToSave, newInitialContent);
+      setShowCreateModal(false);
+      setNewTitle("");
+      setNewInitialContent("");
       navigate(`/documents/${newDoc.id}`);
     } catch (err) {
       alert("Failed to create document: " + err.message);
@@ -68,8 +77,7 @@ export default function DashboardPage() {
           </div>
 
           <button
-            onClick={handleCreate}
-            disabled={creating}
+            onClick={() => setShowCreateModal(true)}
             style={{
               display: "flex", alignItems: "center", gap: "0.5rem",
               padding: "0.65rem 1.25rem", backgroundColor: "#2563eb", color: "#fff",
@@ -78,7 +86,7 @@ export default function DashboardPage() {
             }}
           >
             <Plus size={20} />
-            <span>{creating ? "Creating..." : "New Document"}</span>
+            <span>New Document</span>
           </button>
         </div>
 
@@ -173,6 +181,73 @@ export default function DashboardPage() {
           </div>
         )}
       </main>
+
+      {/* New Document Name Prompt Modal */}
+      {showCreateModal && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: "rgba(15, 23, 42, 0.6)",
+          display: "flex", justifyContent: "center", alignItems: "center",
+          zIndex: 50, backdropFilter: "blur(4px)", padding: "1rem"
+        }}>
+          <div style={{
+            backgroundColor: "#ffffff", borderRadius: "16px", padding: "1.75rem",
+            width: "100%", maxWidth: "440px", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)"
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <Sparkles size={20} color="#2563eb" />
+                <h3 style={{ fontSize: "1.125rem", fontWeight: "700", color: "#0f172a" }}>Create New Document</h3>
+              </div>
+              <button onClick={() => setShowCreateModal(false)} style={{ border: "none", background: "none", cursor: "pointer", color: "#94a3b8" }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              <div>
+                <label style={{ display: "block", fontSize: "0.875rem", fontWeight: "500", color: "#334155", marginBottom: "0.35rem" }}>
+                  Document Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Sprint Goals, Architecture Specs, Notes..."
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  autoFocus
+                  style={{
+                    width: "100%", padding: "0.65rem 0.85rem", borderRadius: "8px",
+                    border: "1px solid #cbd5e1", fontSize: "0.95rem"
+                  }}
+                />
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.5rem", marginTop: "0.5rem" }}>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  style={{
+                    padding: "0.6rem 1rem", borderRadius: "8px", border: "1px solid #cbd5e1",
+                    backgroundColor: "#ffffff", color: "#64748b", fontWeight: "500", cursor: "pointer"
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={creating}
+                  style={{
+                    padding: "0.6rem 1.25rem", borderRadius: "8px", border: "none",
+                    backgroundColor: "#2563eb", color: "#ffffff", fontWeight: "600", cursor: "pointer"
+                  }}
+                >
+                  {creating ? "Creating..." : "Create Document"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
