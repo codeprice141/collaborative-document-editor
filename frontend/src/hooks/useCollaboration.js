@@ -21,7 +21,9 @@ export function useCollaboration(docId) {
 
     setConnectionStatus("connecting");
     const clientId = "client_" + Math.random().toString(36).substring(2, 8);
-    const wsUrl = `ws://localhost:8000/api/v1/ws/documents/${docId}?token=${token}&client_id=${clientId}`;
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const host = import.meta.env.VITE_WS_HOST || window.location.host;
+    const wsUrl = `${protocol}//${host}/api/v1/ws/documents/${docId}?token=${token}&client_id=${clientId}`;
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
