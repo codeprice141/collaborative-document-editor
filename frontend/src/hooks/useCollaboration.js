@@ -5,11 +5,9 @@ function resolveWebSocketUrl(docId, token, clientId) {
     return `${import.meta.env.VITE_WS_URL}/api/v1/ws/documents/${docId}?token=${token}&client_id=${clientId}`;
   }
   if (typeof window !== "undefined") {
-    // If running on localhost / 127.0.0.1, connect directly to FastAPI backend on port 8000
     if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
       return `ws://127.0.0.1:8000/api/v1/ws/documents/${docId}?token=${token}&client_id=${clientId}`;
     }
-    // If running on Ngrok or remote domain, use wss / ws on the current host
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     return `${protocol}//${window.location.host}/api/v1/ws/documents/${docId}?token=${token}&client_id=${clientId}`;
   }
@@ -18,12 +16,13 @@ function resolveWebSocketUrl(docId, token, clientId) {
 
 export function useCollaboration(docId, onRemoteDraw) {
   const [content, setContent] = useState("");
+  const [drawingData, setDrawingData] = useState("[]");
   const [version, setVersion] = useState(0);
   const [activeUsers, setActiveUsers] = useState([]);
   const [userRole, setUserRole] = useState("editor");
   const [myColor, setMyColor] = useState("#2563eb");
   const [remoteCursors, setRemoteCursors] = useState({});
-  const [connectionStatus, setConnectionStatus] = useState("connecting"); // "connected" | "connecting" | "disconnected"
+  const [connectionStatus, setConnectionStatus] = useState("connecting");
   const [typingUsers, setTypingUsers] = useState([]);
   const wsRef = useRef(null);
   const contentRef = useRef(content);
@@ -41,12 +40,10 @@ export function useCollaboration(docId, onRemoteDraw) {
     setConnectionStatus("connecting");
     const clientId = "client_" + Math.random().toString(36).substring(2, 8);
     const wsUrl = resolveWebSocketUrl(docId, token, clientId);
-    console.log("Connecting WebSocket to:", wsUrl);
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
     ws.onopen = () => {
-      console.log("WebSocket connected successfully!");
       setConnectionStatus("connected");
     };
 
@@ -56,6 +53,7 @@ export function useCollaboration(docId, onRemoteDraw) {
         switch (data.type) {
           case "sync_init":
             setContent(data.content || "");
+            setDrawingData(data.drawing_data || "[]");
             setVersion(data.version || 0);
             setUserRole(data.user_role || "editor");
             setMyColor(data.user_color || "#2563eb");
@@ -66,17 +64,16 @@ export function useCollaboration(docId, onRemoteDraw) {
           case "operation_broadcast":
             const op = data.operation;
             setContent((prev) => {
-              let nextContent = prev;
-              if (op.op_type === "insert") {
+              if (op.op_type === "replace") {
+                return op.text;
+              } else if (op.op_type === "insert") {
                 const pos = Math.max(0, Math.min(op.position, prev.length));
-                nextContent = prev.slice(0, pos) + op.text + prev.slice(pos);
+                return prev.slice(0, pos) + op.text + prev.slice(pos);
               } else if (op.op_type === "delete") {
                 const pos = Math.max(0, Math.min(op.position, prev.length));
-                nextContent = prev.slice(0, pos) + prev.slice(pos + op.length);
-              } else if (op.op_type === "replace") {
-                nextContent = op.text;
+                return prev.slice(0, pos) + prev.slice(pos + op.length);
               }
-              return nextContent;
+              return prev;
             });
             setVersion(data.version);
             break;
@@ -113,21 +110,22 @@ export function useCollaboration(docId, onRemoteDraw) {
             break;
 
           case "draw_broadcast":
+            if (data.elements) {
+              setDrawingData(typeof data.elements === "string" ? data.elements : JSON.stringify(data.elements));
+            }
             if (drawCallbackRef.current) {
-              drawCallbackRef.current(data.stroke, data.user_color, data.user_name);
+              drawCallbackRef.current(data);
             }
             break;
 
           case "sync_recovery":
             setContent(data.current_content);
+            if (data.drawing_data) setDrawingData(data.drawing_data);
             setVersion(data.current_version);
             break;
 
           case "error":
-            console.error("Server error:", data.message);
-            if (data.message.includes("permission denied") || data.message.includes("Authentication failed")) {
-              setConnectionStatus("disconnected");
-            }
+            console.error("Server WS error:", data.message);
             break;
         }
       } catch (err) {
@@ -135,13 +133,11 @@ export function useCollaboration(docId, onRemoteDraw) {
       }
     };
 
-    ws.onerror = (err) => {
-      console.error("WebSocket connection error:", err);
+    ws.onerror = () => {
       setConnectionStatus("disconnected");
     };
 
-    ws.onclose = (event) => {
-      console.log("WebSocket closed with code:", event.code);
+    ws.onclose = () => {
       setConnectionStatus("disconnected");
     };
 
@@ -178,12 +174,12 @@ export function useCollaboration(docId, onRemoteDraw) {
     }
   }, []);
 
-  const sendDraw = useCallback((stroke) => {
+  const sendDraw = useCallback((drawPayload) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(
         JSON.stringify({
           type: "draw",
-          stroke,
+          ...drawPayload,
         })
       );
     }
@@ -192,6 +188,8 @@ export function useCollaboration(docId, onRemoteDraw) {
   return {
     content,
     setContent,
+    drawingData,
+    setDrawingData,
     version,
     userRole,
     myColor,

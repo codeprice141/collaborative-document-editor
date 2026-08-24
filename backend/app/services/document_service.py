@@ -19,6 +19,7 @@ class DocumentService:
         doc = Document(
             title=doc_in.title,
             content=doc_in.content,
+            drawing_data=getattr(doc_in, "drawing_data", "[]") or "[]",
             version=0,
             owner_id=user_id,
         )
@@ -38,6 +39,7 @@ class DocumentService:
             document_id=doc.id,
             version=0,
             content=doc_in.content,
+            drawing_data=getattr(doc_in, "drawing_data", "[]") or "[]",
             created_by_id=user_id,
             comment="Initial document creation",
         )
@@ -103,6 +105,8 @@ class DocumentService:
             doc.title = update_in.title
         if update_in.content is not None:
             doc.content = update_in.content
+        if getattr(update_in, "drawing_data", None) is not None:
+            doc.drawing_data = update_in.drawing_data
         doc.updated_at = datetime.now(timezone.utc)
         db.commit()
         db.refresh(doc)
@@ -164,6 +168,7 @@ class DocumentService:
             document_id=doc.id,
             version=doc.version,
             content=doc.content,
+            drawing_data=doc.drawing_data or "[]",
             created_by_id=user_id,
             comment=comment or f"Snapshot at version {doc.version}",
         )
@@ -196,6 +201,8 @@ class DocumentService:
         if not snapshot:
             return None
         doc.content = snapshot.content
+        if snapshot.drawing_data is not None:
+            doc.drawing_data = snapshot.drawing_data
         doc.version += 1
         doc.updated_at = datetime.now(timezone.utc)
         db.commit()

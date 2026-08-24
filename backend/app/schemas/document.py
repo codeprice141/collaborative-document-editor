@@ -1,103 +1,100 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional, List
 from pydantic import BaseModel, Field
 from app.models.document import CollaboratorRole
 from app.schemas.auth import UserResponse
 
 
-class DocumentCreate(BaseModel):
-    """Schema to create a new document."""
-    title: str = Field(default="Untitled Document", max_length=255)
-    content: str = Field(default="")
+class DocumentBase(BaseModel):
+    title: str = Field(..., min_length=1, max_length=255)
+    content: Optional[str] = Field(default="")
+    drawing_data: Optional[str] = Field(default="[]")
+
+
+class DocumentCreate(DocumentBase):
+    pass
 
 
 class DocumentUpdate(BaseModel):
-    """Schema to update document metadata or content."""
-    title: Optional[str] = Field(None, max_length=255)
+    title: Optional[str] = Field(None, min_length=1, max_length=255)
     content: Optional[str] = None
+    drawing_data: Optional[str] = None
 
 
-class CollaboratorResponse(BaseModel):
-    """Collaborator detail schema."""
+class DocumentCollaboratorResponse(BaseModel):
     id: int
     user_id: int
     role: CollaboratorRole
     created_at: datetime
     user: UserResponse
 
-    model_config = {"from_attributes": True}
+    class Config:
+        from_attributes = True
 
 
-class DocumentResponse(BaseModel):
-    """Summary document schema for dashboard listing."""
-    id: int
-    title: str
-    version: int
-    owner_id: int
-    is_archived: bool
-    created_at: datetime
-    updated_at: datetime
-    user_role: Optional[CollaboratorRole] = None
-
-    model_config = {"from_attributes": True}
-
-
-class DocumentDetailResponse(BaseModel):
-    """Full document schema including content and collaborators."""
-    id: int
-    title: str
-    content: str
-    version: int
-    owner_id: int
-    is_archived: bool
-    created_at: datetime
-    updated_at: datetime
-    user_role: Optional[CollaboratorRole] = None
-    owner: UserResponse
-    collaborators: List[CollaboratorResponse] = []
-
-    model_config = {"from_attributes": True}
+CollaboratorResponse = DocumentCollaboratorResponse
 
 
 class CollaboratorAddRequest(BaseModel):
-    """Schema to invite a collaborator by email."""
     email: str
     role: CollaboratorRole = CollaboratorRole.EDITOR
 
 
+ShareDocumentRequest = CollaboratorAddRequest
+
+
+class DocumentResponse(BaseModel):
+    id: int
+    title: str
+    content: Optional[str] = ""
+    drawing_data: Optional[str] = "[]"
+    version: int
+    owner_id: int
+    is_archived: bool
+    created_at: datetime
+    updated_at: datetime
+    user_role: Optional[CollaboratorRole] = None
+    owner: Optional[UserResponse] = None
+    collaborators: List[DocumentCollaboratorResponse] = []
+
+    class Config:
+        from_attributes = True
+
+
+DocumentDetailResponse = DocumentResponse
+
+
 class SnapshotCreate(BaseModel):
-    """Schema to manually create a snapshot checkpoint."""
     comment: Optional[str] = Field(None, max_length=255)
 
 
 class SnapshotResponse(BaseModel):
-    """Snapshot representation."""
     id: int
     document_id: int
     version: int
-    content: str
-    created_by_id: Optional[int]
-    comment: Optional[str]
+    content: Optional[str] = ""
+    drawing_data: Optional[str] = "[]"
+    comment: Optional[str] = None
     created_at: datetime
 
-    model_config = {"from_attributes": True}
+    class Config:
+        from_attributes = True
 
 
 class OperationPayload(BaseModel):
-    """Realtime operation schema for sync."""
-    op_type: str = Field(..., pattern="^(insert|delete|replace)$")
-    position: int = Field(..., ge=0)
+    op_type: str
+    position: int
     text: Optional[str] = None
-    length: int = Field(default=0, ge=0)
-    client_id: str
-    client_version: int = Field(..., ge=0)
+    length: Optional[int] = None
+    client_version: int
 
 
 class SyncInitResponse(BaseModel):
-    """Initial payload sent to client on WebSocket connection."""
     document_id: int
     title: str
-    content: str
+    content: Optional[str] = ""
+    drawing_data: Optional[str] = "[]"
     version: int
-    user_role: CollaboratorRole
-    active_users: List[dict] = []
+    user_role: str
+    user_color: str
+    active_users: list

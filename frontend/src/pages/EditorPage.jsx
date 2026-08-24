@@ -2,9 +2,11 @@ import React, { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { api } from "../services/api";
 import { useCollaboration } from "../hooks/useCollaboration";
+import RichTextEditor from "../components/RichTextEditor";
+import WhiteboardCanvas from "../components/WhiteboardCanvas";
+import CollaboratorDock from "../components/CollaboratorDock";
 import ShareModal from "../components/ShareModal";
 import RevisionHistoryDrawer from "../components/RevisionHistoryDrawer";
-import WhiteboardCanvas from "../components/WhiteboardCanvas";
 import {
   ArrowLeft,
   Share2,
@@ -13,17 +15,8 @@ import {
   WifiOff,
   FileText,
   Palette,
-  Users,
   CheckCircle,
-  Bold,
-  Italic,
-  Heading1,
-  Heading2,
-  List,
-  Code,
-  Quote,
-  RefreshCw,
-  Sparkles
+  RefreshCw
 } from "lucide-react";
 
 export default function EditorPage() {
@@ -31,30 +24,29 @@ export default function EditorPage() {
   const docId = parseInt(id, 10);
   const [docMeta, setDocMeta] = useState(null);
   const [title, setTitle] = useState("");
-  const [isSavingTitle, setIsSavingTitle] = useState(false);
   const [titleSaved, setTitleSaved] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [activeTab, setActiveTab] = useState("text"); // "text" | "canvas"
-  const textareaRef = useRef(null);
   const drawListenerRef = useRef(null);
 
   const registerDrawListener = (callback) => {
     drawListenerRef.current = callback;
   };
 
-  const handleRemoteDraw = (stroke, peerColor, peerName) => {
+  const handleRemoteDraw = (payload) => {
     if (drawListenerRef.current) {
-      drawListenerRef.current(stroke, peerColor, peerName);
+      drawListenerRef.current(payload);
     }
   };
 
   const {
     content,
     setContent,
+    drawingData,
+    setDrawingData,
     version,
     userRole,
-    myColor,
     activeUsers,
     remoteCursors,
     typingUsers,
@@ -66,7 +58,6 @@ export default function EditorPage() {
 
   const isReadOnly = userRole === "viewer";
 
-  // Load document metadata
   const fetchDoc = async () => {
     try {
       const data = await api.getDocument(docId);
@@ -83,97 +74,55 @@ export default function EditorPage() {
 
   const saveTitle = async (newTitle) => {
     if (newTitle.trim() && newTitle !== docMeta?.title && !isReadOnly) {
-      setIsSavingTitle(true);
       try {
         await api.updateDocument(docId, { title: newTitle.trim() });
         setTitleSaved(true);
         setTimeout(() => setTitleSaved(false), 2000);
       } catch (err) {
         console.error("Failed to save title", err);
-      } finally {
-        setIsSavingTitle(false);
       }
     }
   };
 
-  const handleTitleKeyDown = (e) => {
-    if (e.key === "Enter") {
-      e.target.blur();
-    }
-  };
-
-  const handleTextChange = (e) => {
+  const handleHtmlChange = (newHtml) => {
     if (isReadOnly) return;
-    const newText = e.target.value;
-    const oldText = content;
-    const cursor = e.target.selectionStart;
-
-    if (newText.length > oldText.length) {
-      const diffLen = newText.length - oldText.length;
-      const pos = cursor - diffLen;
-      const insertedText = newText.slice(pos, cursor);
-      sendOperation({
-        op_type: "insert",
-        position: pos,
-        text: insertedText,
-      });
-    } else if (newText.length < oldText.length) {
-      const diffLen = oldText.length - newText.length;
-      const pos = cursor;
-      sendOperation({
-        op_type: "delete",
-        position: pos,
-        length: diffLen,
-      });
-    }
-
-    setContent(newText);
-    sendCursor(cursor, true);
+    setContent(newHtml);
+    sendOperation({
+      op_type: "replace",
+      text: newHtml,
+    });
   };
 
-  const handleCursorMove = (e) => {
-    const cursor = e.target.selectionStart;
-    sendCursor(cursor, false);
-  };
-
-  // Text Formatting Helpers
-  const insertFormatting = (prefix, suffix = "") => {
-    if (isReadOnly || !textareaRef.current) return;
-    const textarea = textareaRef.current;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selected = content.substring(start, end);
-    const replacement = `${prefix}${selected || "text"}${suffix}`;
-
-    // Generate replace or insert/delete operation
-    const newContent = content.substring(0, start) + replacement + content.substring(end);
-    if (end > start) {
-      sendOperation({ op_type: "delete", position: start, length: end - start });
+  const handleSaveDrawing = async (elementsJson) => {
+    setDrawingData(elementsJson);
+    if (!isReadOnly) {
+      try {
+        await api.updateDocument(docId, { drawing_data: elementsJson });
+      } catch (e) {
+        console.error("Failed to persist drawing data", e);
+      }
     }
-    sendOperation({ op_type: "insert", position: start, text: replacement });
-
-    setContent(newContent);
-    setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(start + prefix.length, start + prefix.length + (selected ? selected.length : 4));
-    }, 10);
   };
 
   const allCollaborators = docMeta?.collaborators || [];
-  const wordsCount = content.trim() ? content.trim().split(/\s+/).length : 0;
-  const charsCount = content.length;
 
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column", backgroundColor: "#f8fafc" }}>
-      {/* Top Header */}
+      {/* Top Glassmorphic Navigation Bar */}
       <header style={{
-        backgroundColor: "#ffffff", borderBottom: "1px solid #e2e8f0",
-        padding: "0.5rem 1.25rem", display: "flex", justifyContent: "space-between", alignItems: "center"
+        backgroundColor: "rgba(255, 255, 255, 0.95)",
+        backdropFilter: "blur(10px)",
+        borderBottom: "1px solid #e2e8f0",
+        padding: "0.5rem 1.5rem",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        zIndex: 30
       }}>
-        {/* Left: Back & Editable Title */}
+        {/* Left: Back & Title */}
         <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-          <Link to="/dashboard" style={{ display: "flex", alignItems: "center", color: "#64748b", padding: "0.4rem", borderRadius: "6px" }} title="Back to Dashboard">
-            <ArrowLeft size={20} />
+          <Link to="/dashboard" style={{ display: "flex", alignItems: "center", color: "#64748b", padding: "0.4rem", borderRadius: "8px" }} title="Back to Dashboard">
+            <ArrowLeft size={18} />
           </Link>
 
           <div>
@@ -184,25 +133,25 @@ export default function EditorPage() {
                 disabled={isReadOnly}
                 onChange={(e) => setTitle(e.target.value)}
                 onBlur={(e) => saveTitle(e.target.value)}
-                onKeyDown={handleTitleKeyDown}
+                onKeyDown={(e) => e.key === "Enter" && e.target.blur()}
                 placeholder="Untitled Document"
                 title="Click to rename document"
                 style={{
-                  fontSize: "1.125rem", fontWeight: "700", color: "#0f172a",
+                  fontSize: "1.05rem", fontWeight: "700", color: "#0f172a",
                   border: "1px solid transparent", background: "transparent",
                   outline: "none", width: "240px", padding: "2px 6px",
-                  borderRadius: "4px", transition: "border 0.2s"
+                  borderRadius: "6px", transition: "border 0.15s"
                 }}
                 onFocus={(e) => e.target.style.borderColor = "#93c5fd"}
               />
               {titleSaved && (
                 <span style={{ display: "flex", alignItems: "center", gap: "0.2rem", fontSize: "0.75rem", color: "#16a34a", fontWeight: "600" }}>
-                  <CheckCircle size={14} /> Saved
+                  <CheckCircle size={13} /> Saved
                 </span>
               )}
             </div>
 
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.75rem", color: "#94a3b8", paddingLeft: "6px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.75rem", color: "#94a3b8", paddingLeft: "6px" }}>
               <span style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
                 {connectionStatus === "connected" ? (
                   <Wifi size={12} color="#10b981" />
@@ -218,22 +167,25 @@ export default function EditorPage() {
               <span>•</span>
               <span>v{version}</span>
               <span>•</span>
-              <span style={{ textTransform: "capitalize", fontWeight: "600", color: "#64748b" }}>{userRole} Mode</span>
+              <span style={{ textTransform: "capitalize", fontWeight: "600", color: "#64748b" }}>{userRole}</span>
             </div>
           </div>
         </div>
 
-        {/* Center: Mode Switcher */}
-        <div style={{ display: "flex", backgroundColor: "#f1f5f9", padding: "0.25rem", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+        {/* Center: Mode Switcher Tabs */}
+        <div style={{
+          display: "flex", backgroundColor: "#f1f5f9",
+          padding: "0.25rem", borderRadius: "10px", border: "1px solid #e2e8f0"
+        }}>
           <button
             onClick={() => setActiveTab("text")}
             style={{
-              display: "flex", alignItems: "center", gap: "0.35rem",
-              padding: "0.35rem 0.85rem", borderRadius: "6px", border: "none",
+              display: "flex", alignItems: "center", gap: "0.4rem",
+              padding: "0.4rem 1rem", borderRadius: "8px", border: "none",
               backgroundColor: activeTab === "text" ? "#ffffff" : "transparent",
               color: activeTab === "text" ? "#2563eb" : "#64748b",
               fontWeight: "600", fontSize: "0.875rem", cursor: "pointer",
-              boxShadow: activeTab === "text" ? "0 1px 3px rgba(0,0,0,0.1)" : "none"
+              boxShadow: activeTab === "text" ? "0 1px 3px rgba(0,0,0,0.08)" : "none"
             }}
           >
             <FileText size={16} />
@@ -242,12 +194,12 @@ export default function EditorPage() {
           <button
             onClick={() => setActiveTab("canvas")}
             style={{
-              display: "flex", alignItems: "center", gap: "0.35rem",
-              padding: "0.35rem 0.85rem", borderRadius: "6px", border: "none",
+              display: "flex", alignItems: "center", gap: "0.4rem",
+              padding: "0.4rem 1rem", borderRadius: "8px", border: "none",
               backgroundColor: activeTab === "canvas" ? "#ffffff" : "transparent",
               color: activeTab === "canvas" ? "#2563eb" : "#64748b",
               fontWeight: "600", fontSize: "0.875rem", cursor: "pointer",
-              boxShadow: activeTab === "canvas" ? "0 1px 3px rgba(0,0,0,0.1)" : "none"
+              boxShadow: activeTab === "canvas" ? "0 1px 3px rgba(0,0,0,0.08)" : "none"
             }}
           >
             <Palette size={16} />
@@ -257,38 +209,14 @@ export default function EditorPage() {
 
         {/* Right: Actions */}
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-          {/* Active Collaborator Avatars */}
-          <div style={{ display: "flex", alignItems: "center" }}>
-            {activeUsers.map((u) => (
-              <div
-                key={u.client_id}
-                title={`Active: ${u.name} (${u.email})`}
-                style={{
-                  position: "relative",
-                  width: "32px", height: "32px", borderRadius: "50%",
-                  backgroundColor: u.color || "#2563eb", color: "#ffffff",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: "0.75rem", fontWeight: "700", border: "2px solid #ffffff",
-                  boxShadow: "0 2px 4px rgba(0,0,0,0.1)", marginLeft: "-6px"
-                }}
-              >
-                {u.name.charAt(0).toUpperCase()}
-                <span style={{
-                  position: "absolute", bottom: "-2px", right: "-2px",
-                  width: "9px", height: "9px", borderRadius: "50%",
-                  backgroundColor: "#22c55e", border: "2px solid #ffffff"
-                }} />
-              </div>
-            ))}
-          </div>
-
           <button
             onClick={() => setShowHistory(true)}
             style={{
               display: "flex", alignItems: "center", gap: "0.35rem",
-              padding: "0.45rem 0.75rem", borderRadius: "6px",
+              padding: "0.45rem 0.85rem", borderRadius: "8px",
               border: "1px solid #cbd5e1", backgroundColor: "#ffffff",
-              fontSize: "0.875rem", cursor: "pointer", color: "#475569"
+              fontSize: "0.875rem", cursor: "pointer", color: "#475569",
+              fontWeight: "500"
             }}
           >
             <History size={16} />
@@ -300,9 +228,10 @@ export default function EditorPage() {
               onClick={() => setShowShare(true)}
               style={{
                 display: "flex", alignItems: "center", gap: "0.35rem",
-                padding: "0.45rem 0.85rem", borderRadius: "6px",
+                padding: "0.45rem 0.95rem", borderRadius: "8px",
                 border: "none", backgroundColor: "#2563eb", color: "#ffffff",
-                fontSize: "0.875rem", fontWeight: "500", cursor: "pointer"
+                fontSize: "0.875rem", fontWeight: "600", cursor: "pointer",
+                boxShadow: "0 2px 4px rgba(37, 99, 235, 0.2)"
               }}
             >
               <Share2 size={16} />
@@ -312,186 +241,42 @@ export default function EditorPage() {
         </div>
       </header>
 
-      {/* Main Document Workspace */}
-      <main style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+      {/* Main Workspace Area */}
+      <main style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", position: "relative" }}>
         {activeTab === "text" ? (
-          <div style={{ flex: 1, overflowY: "auto", padding: "1.5rem 2rem", display: "flex", flexDirection: "column", alignItems: "center" }}>
-            {/* Collaborators Presence & Formatting Bar */}
-            <div style={{
-              width: "100%", maxWidth: "850px", marginBottom: "0.75rem",
-              display: "flex", justifyContent: "space-between", alignItems: "center",
-              padding: "0.5rem 0.85rem", backgroundColor: "#ffffff",
-              borderRadius: "8px", border: "1px solid #e2e8f0", fontSize: "0.8125rem",
-              boxShadow: "0 1px 2px rgba(0,0,0,0.03)"
-            }}>
-              {/* Formatting Actions */}
-              <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
-                <button
-                  onClick={() => insertFormatting("**", "**")}
-                  style={{ padding: "4px 8px", borderRadius: "4px", border: "1px solid #e2e8f0", backgroundColor: "#fff", cursor: "pointer" }}
-                  title="Bold"
-                >
-                  <Bold size={14} />
-                </button>
-                <button
-                  onClick={() => insertFormatting("*", "*")}
-                  style={{ padding: "4px 8px", borderRadius: "4px", border: "1px solid #e2e8f0", backgroundColor: "#fff", cursor: "pointer" }}
-                  title="Italic"
-                >
-                  <Italic size={14} />
-                </button>
-                <button
-                  onClick={() => insertFormatting("# ")}
-                  style={{ padding: "4px 8px", borderRadius: "4px", border: "1px solid #e2e8f0", backgroundColor: "#fff", cursor: "pointer" }}
-                  title="Heading 1"
-                >
-                  <Heading1 size={14} />
-                </button>
-                <button
-                  onClick={() => insertFormatting("## ")}
-                  style={{ padding: "4px 8px", borderRadius: "4px", border: "1px solid #e2e8f0", backgroundColor: "#fff", cursor: "pointer" }}
-                  title="Heading 2"
-                >
-                  <Heading2 size={14} />
-                </button>
-                <button
-                  onClick={() => insertFormatting("- ")}
-                  style={{ padding: "4px 8px", borderRadius: "4px", border: "1px solid #e2e8f0", backgroundColor: "#fff", cursor: "pointer" }}
-                  title="Bullet List"
-                >
-                  <List size={14} />
-                </button>
-                <button
-                  onClick={() => insertFormatting("```\\n", "\\n```")}
-                  style={{ padding: "4px 8px", borderRadius: "4px", border: "1px solid #e2e8f0", backgroundColor: "#fff", cursor: "pointer" }}
-                  title="Code Block"
-                >
-                  <Code size={14} />
-                </button>
-                <button
-                  onClick={() => insertFormatting("> ")}
-                  style={{ padding: "4px 8px", borderRadius: "4px", border: "1px solid #e2e8f0", backgroundColor: "#fff", cursor: "pointer" }}
-                  title="Quote"
-                >
-                  <Quote size={14} />
-                </button>
-              </div>
-
-              {/* Collaborators Pills */}
-              <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
-                {allCollaborators.map((c) => {
-                  const isActive = activeUsers.some((u) => u.email === c.user.email);
-                  const activeUserObj = activeUsers.find((u) => u.email === c.user.email);
-                  const color = activeUserObj?.color || (c.role === "owner" ? "#2563eb" : "#16a34a");
-
-                  return (
-                    <div
-                      key={c.id}
-                      style={{
-                        display: "flex", alignItems: "center", gap: "0.35rem",
-                        padding: "2px 8px", borderRadius: "9999px",
-                        backgroundColor: isActive ? `${color}15` : "#f1f5f9",
-                        border: `1px solid ${isActive ? color : "#cbd5e1"}`,
-                        color: isActive ? color : "#64748b",
-                        fontSize: "0.75rem", fontWeight: "600"
-                      }}
-                    >
-                      <span style={{
-                        width: "7px", height: "7px", borderRadius: "50%",
-                        backgroundColor: isActive ? "#22c55e" : "#94a3b8"
-                      }} />
-                      <span>{c.user.full_name}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Document Sheet */}
-            <div style={{
-              width: "100%", maxWidth: "850px", minHeight: "800px",
-              backgroundColor: "#ffffff", borderRadius: "8px",
-              boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -2px rgba(0,0,0,0.05)",
-              padding: "3rem", display: "flex", flexDirection: "column", position: "relative",
-              border: "1px solid #e2e8f0"
-            }}>
-              {isReadOnly && (
-                <div style={{ backgroundColor: "#fef3c7", color: "#92400e", padding: "0.5rem 1rem", borderRadius: "6px", fontSize: "0.875rem", marginBottom: "1rem" }}>
-                  👁️ You are in Viewer mode. You cannot edit this document.
-                </div>
-              )}
-
-              {/* Active Remote Cursor Name Tags */}
-              <div style={{ position: "relative", width: "100%", height: 0 }}>
-                {Object.entries(remoteCursors).map(([cid, data]) => {
-                  const user = activeUsers.find((u) => u.client_id === cid);
-                  if (!user) return null;
-                  const leftPos = Math.min(650, ((data.cursor?.index || 0) % 50) * 12);
-
-                  return (
-                    <div
-                      key={cid}
-                      style={{
-                        position: "absolute",
-                        top: "-26px",
-                        left: `${leftPos}px`,
-                        backgroundColor: user.color || "#2563eb",
-                        color: "#ffffff",
-                        padding: "2px 8px",
-                        borderRadius: "6px",
-                        fontSize: "0.75rem",
-                        fontWeight: "700",
-                        pointerEvents: "none",
-                        transition: "left 0.15s ease",
-                        boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
-                        zIndex: 10,
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "0.25rem"
-                      }}
-                    >
-                      <span>{user.name}</span>
-                      <span>✏️</span>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <textarea
-                ref={textareaRef}
-                value={content}
-                readOnly={isReadOnly}
-                onChange={handleTextChange}
-                onKeyUp={handleCursorMove}
-                onClick={handleCursorMove}
-                placeholder="Type notes, project plans, or collaborate with teammates..."
-                style={{
-                  width: "100%", flex: 1, border: "none", outline: "none", resize: "none",
-                  fontSize: "1.05rem", lineHeight: "1.75", fontFamily: "inherit",
-                  color: "#1e293b", backgroundColor: "transparent"
-                }}
-              />
-
-              {/* Footer Stats Bar */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "1rem", borderTop: "1px solid #f1f5f9", marginTop: "2rem", fontSize: "0.75rem", color: "#94a3b8" }}>
-                <span>{wordsCount} words • {charsCount} characters</span>
-                <span>Version {version} • Real-Time OT Vector Clock Sync</span>
-              </div>
-            </div>
+          <div style={{ flex: 1, overflowY: "auto", padding: "1.5rem 2rem", display: "flex", justifyContent: "center" }}>
+            <RichTextEditor
+              htmlContent={content}
+              onHtmlChange={handleHtmlChange}
+              isReadOnly={isReadOnly}
+              activeUsers={activeUsers}
+              remoteCursors={remoteCursors}
+              onCursorChange={(idx) => sendCursor(idx, true)}
+            />
           </div>
         ) : (
           <WhiteboardCanvas
+            initialData={drawingData}
+            onSaveData={handleSaveDrawing}
             onSendDraw={sendDraw}
             registerDrawListener={registerDrawListener}
             isReadOnly={isReadOnly}
           />
         )}
+
+        {/* Bottom-Right Floating Collaborator Dock */}
+        <CollaboratorDock
+          activeUsers={activeUsers}
+          allCollaborators={allCollaborators}
+          typingUsers={typingUsers}
+          onOpenShare={() => setShowShare(true)}
+        />
       </main>
 
       {showShare && (
         <ShareModal
           docId={docId}
-          collaborators={docMeta?.collaborators || []}
+          collaborators={allCollaborators}
           onClose={() => setShowShare(false)}
           onShared={fetchDoc}
         />

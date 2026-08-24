@@ -4,8 +4,10 @@ from typing import Generator
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from app.main import app
 from app.core.database import Base, get_db
+from app.models.user import User
+from app.models.document import Document, DocumentCollaborator, DocumentSnapshot, DocumentOperation
+from app.main import app
 
 # Use test sqlite database
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test_suite.db"
@@ -16,17 +18,12 @@ test_engine = create_engine(
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="function", autouse=True)
 def setup_test_db():
-    """Create all tables before test session and drop after."""
+    """Create all tables before each test and drop after for test isolation."""
     Base.metadata.create_all(bind=test_engine)
     yield
     Base.metadata.drop_all(bind=test_engine)
-    if os.path.exists("./test_suite.db"):
-        try:
-            os.remove("./test_suite.db")
-        except OSError:
-            pass
 
 
 @pytest.fixture(scope="function")

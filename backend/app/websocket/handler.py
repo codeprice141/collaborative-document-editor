@@ -70,12 +70,13 @@ async def handle_websocket_connection(
             email=user.email,
         )
 
-        # 5. Send initial synchronization payload (sync_init)
+        # 5. Send initial synchronization payload (sync_init) including persistent drawing_data
         init_payload = {
             "type": "sync_init",
             "document_id": doc.id,
             "title": doc.title,
             "content": doc.content,
+            "drawing_data": doc.drawing_data or "[]",
             "version": doc.version,
             "user_role": role.value,
             "user_color": user_presence.color,
@@ -143,8 +144,8 @@ async def handle_websocket_connection(
                 doc.content = new_content
                 doc.version = new_version
 
-                # Buffer write-behind asynchronously to PostgreSQL (Zero DB flood!)
-                write_buffer.mark_dirty(document_id, new_content, new_version)
+                # Buffer write-behind asynchronously to PostgreSQL
+                write_buffer.mark_dirty(document_id, content=new_content, version=new_version)
 
                 # Broadcast transformed operation to all room peers
                 broadcast_msg = {
@@ -170,7 +171,7 @@ async def handle_websocket_connection(
                 latency_ms = (time.perf_counter() - op_start_time) * 1000
                 metrics.record_operation(latency_ms)
 
-            # --- Whiteboard Live Drawing ---
+            # --- Whiteboard Live Drawing & Vector Shapes (with persistence!) ---
             elif msg_type == "draw":
                 if role == CollaboratorRole.VIEWER:
                     await manager.send_personal_message(
@@ -178,11 +179,20 @@ async def handle_websocket_connection(
                     )
                     continue
 
+                elements_data = msg.get("elements")
                 stroke_data = msg.get("stroke")
+
+                if elements_data is not None:
+                    # Update in-memory document drawing data and buffer to PostgreSQL
+                    drawing_json = json.dumps(elements_data) if not isinstance(elements_data, str) else elements_data
+                    doc.drawing_data = drawing_json
+                    write_buffer.mark_dirty(document_id, drawing_data=drawing_json)
+
                 await manager.broadcast_to_room(
                     document_id,
                     {
                         "type": "draw_broadcast",
+                        "elements": elements_data,
                         "stroke": stroke_data,
                         "client_id": client_id,
                         "user_id": user.id,
@@ -228,6 +238,7 @@ async def handle_websocket_connection(
                         "type": "sync_recovery",
                         "current_version": doc.version,
                         "current_content": doc.content,
+                        "drawing_data": doc.drawing_data or "[]",
                         "missed_operations": missed_ops,
                         "vector_clock": sync_engine.get_vector_clock(document_id),
                     },

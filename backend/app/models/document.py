@@ -18,6 +18,7 @@ class Document(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(255), nullable=False, default="Untitled Document")
     content = Column(Text, nullable=False, default="")
+    drawing_data = Column(Text, nullable=True, default="[]")
     version = Column(Integer, nullable=False, default=0)
     owner_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     is_archived = Column(Boolean, default=False, nullable=False)
@@ -78,6 +79,7 @@ class DocumentSnapshot(Base):
     )
     version = Column(Integer, nullable=False)
     content = Column(Text, nullable=False)
+    drawing_data = Column(Text, nullable=True, default="[]")
     created_by_id = Column(
         Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
