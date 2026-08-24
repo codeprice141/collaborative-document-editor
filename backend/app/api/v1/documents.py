@@ -23,6 +23,7 @@ router = APIRouter(prefix="/documents", tags=["documents"])
 
 
 @router.post("", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED, include_in_schema=False)
 def create_document(
     doc_in: DocumentCreate,
     db: Session = Depends(get_db),
@@ -49,6 +50,7 @@ def create_document(
 
 
 @router.get("", response_model=List[DocumentResponse])
+@router.get("/", response_model=List[DocumentResponse], include_in_schema=False)
 def list_documents(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -119,7 +121,8 @@ def update_document(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Document not found or access denied.",
         )
-    if role == CollaboratorRole.VIEWER:
+    role_enum = CollaboratorRole(role) if role else None
+    if role_enum == CollaboratorRole.VIEWER:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Viewers cannot edit document.",
@@ -154,7 +157,8 @@ def delete_document(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Document not found or access denied.",
         )
-    if role != CollaboratorRole.OWNER:
+    role_enum = CollaboratorRole(role) if role else None
+    if role_enum != CollaboratorRole.OWNER:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only document owner can delete this document.",
@@ -172,7 +176,8 @@ def share_document(
 ):
     """Shares a document with another user by email (requires OWNER role)."""
     doc, role = DocumentService.get_document_with_access(db, doc_id, current_user.id)
-    if not doc or role != CollaboratorRole.OWNER:
+    role_enum = CollaboratorRole(role) if role else None
+    if not doc or role_enum != CollaboratorRole.OWNER:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only document owner can manage collaborators.",
@@ -206,7 +211,8 @@ def remove_collaborator(
 ):
     """Removes a collaborator from the document (requires OWNER role)."""
     doc, role = DocumentService.get_document_with_access(db, doc_id, current_user.id)
-    if not doc or role != CollaboratorRole.OWNER:
+    role_enum = CollaboratorRole(role) if role else None
+    if not doc or role_enum != CollaboratorRole.OWNER:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only document owner can remove collaborators.",
@@ -229,7 +235,8 @@ def create_snapshot(
 ):
     """Creates a snapshot checkpoint of the document."""
     doc, role = DocumentService.get_document_with_access(db, doc_id, current_user.id)
-    if not doc or role == CollaboratorRole.VIEWER:
+    role_enum = CollaboratorRole(role) if role else None
+    if not doc or role_enum == CollaboratorRole.VIEWER:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permission denied to create snapshots.",
@@ -263,7 +270,8 @@ def rollback_document(
 ):
     """Rolls back the document to a previous snapshot (requires OWNER role)."""
     doc, role = DocumentService.get_document_with_access(db, doc_id, current_user.id)
-    if not doc or role != CollaboratorRole.OWNER:
+    role_enum = CollaboratorRole(role) if role else None
+    if not doc or role_enum != CollaboratorRole.OWNER:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only document owner can restore snapshots.",

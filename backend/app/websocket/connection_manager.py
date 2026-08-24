@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import uuid
 from typing import Dict, List, Set, Optional, Any
 from fastapi import WebSocket
 from collections import defaultdict
@@ -10,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class ConnectionManager:
-    """Tracks connected WebSockets per document room with Redis Pub/Sub multi-pod horizontal scaling."""
+    """Tracks connected WebSockets per document room with Redis Pub/Sub multi-pod horizontal scaling and message deduplication."""
 
     def __init__(self):
         # {doc_id: {client_id: WebSocket}}
@@ -19,6 +20,8 @@ class ConnectionManager:
         self._socket_lookup: Dict[WebSocket, tuple] = {}
         # {doc_id: asyncio.Task} for Redis listener tasks
         self._pubsub_tasks: Dict[int, asyncio.Task] = {}
+        # Unique node ID for multi-pod mesh deduplication
+        self._pod_id = uuid.uuid4().hex
 
     async def connect(self, doc_id: int, client_id: str, websocket: WebSocket):
         await websocket.accept()
@@ -63,7 +66,7 @@ class ConnectionManager:
         publish_to_mesh: bool = True,
     ):
         """Broadcasts JSON message to all active sockets in room and publishes to Redis mesh."""
-        # 1. Local node broadcast
+        # 1. Broadcast to sockets connected to this local pod
         await self._broadcast_local(doc_id, message, exclude_client_id)
 
         # 2. Redis Pub/Sub multi-pod mesh fanout
@@ -74,7 +77,7 @@ class ConnectionManager:
                     payload = json.dumps({
                         "message": message,
                         "exclude_client_id": exclude_client_id,
-                        "origin_node": "local",
+                        "sender_pod_id": self._pod_id,
                     })
                     await redis.publish(f"room:{doc_id}", payload)
             except Exception as exc:
@@ -109,6 +112,9 @@ class ConnectionManager:
                 if raw_msg and raw_msg.get("type") == "message":
                     try:
                         data = json.loads(raw_msg.get("data", "{}"))
+                        # Deduplicate: ignore messages originating from this exact pod
+                        if data.get("sender_pod_id") == self._pod_id:
+                            continue
                         msg = data.get("message")
                         exclude_cid = data.get("exclude_client_id")
                         if msg:

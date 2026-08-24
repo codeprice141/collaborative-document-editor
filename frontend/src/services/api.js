@@ -62,14 +62,14 @@ export const api = {
   },
 
   async getDocuments() {
-    const res = await fetch(`${API_BASE}/documents/`, {
+    const res = await fetch(`${API_BASE}/documents`, {
       headers: getAuthHeaders(),
     });
     return handleResponse(res, "Failed to load documents");
   },
 
   async createDocument(title, content = "") {
-    const res = await fetch(`${API_BASE}/documents/`, {
+    const res = await fetch(`${API_BASE}/documents`, {
       method: "POST",
       headers: getAuthHeaders(),
       body: JSON.stringify({ title, content }),

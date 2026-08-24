@@ -35,7 +35,9 @@ async def lifespan(app: FastAPI):
             conn.execute(text("ALTER TABLE documents ADD COLUMN IF NOT EXISTS drawing_data TEXT DEFAULT '[]'"))
             conn.execute(text("ALTER TABLE document_snapshots ADD COLUMN IF NOT EXISTS drawing_data TEXT DEFAULT '[]'"))
             conn.execute(text("ALTER TABLE documents ADD COLUMN IF NOT EXISTS is_public BOOLEAN DEFAULT FALSE"))
-            conn.execute(text("ALTER TABLE documents ADD COLUMN IF NOT EXISTS public_role VARCHAR(16) DEFAULT 'viewer'"))
+            conn.execute(text("ALTER TABLE documents ADD COLUMN IF NOT EXISTS public_role VARCHAR(32) DEFAULT 'viewer'"))
+            conn.execute(text("ALTER TABLE document_collaborators ALTER COLUMN role TYPE VARCHAR(32) USING role::text"))
+            conn.execute(text("ALTER TABLE documents ALTER COLUMN public_role TYPE VARCHAR(32) USING public_role::text"))
             conn.commit()
     except Exception as exc:
         logger.warning("Auto-migration check on startup: %s", exc)

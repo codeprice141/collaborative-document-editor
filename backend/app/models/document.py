@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 import enum
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, Enum, Boolean
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, Boolean
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
@@ -9,6 +9,16 @@ class CollaboratorRole(str, enum.Enum):
     OWNER = "owner"
     EDITOR = "editor"
     VIEWER = "viewer"
+
+    @classmethod
+    def _missing_(cls, value):
+        if value is None:
+            return cls.VIEWER
+        val_str = str(value).lower().strip()
+        for member in cls:
+            if member.value == val_str or member.name.lower() == val_str:
+                return member
+        return cls.VIEWER
 
 
 class Document(Base):
@@ -23,9 +33,7 @@ class Document(Base):
     owner_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     is_archived = Column(Boolean, default=False, nullable=False)
     is_public = Column(Boolean, default=False, nullable=False)
-    public_role = Column(
-        Enum(CollaboratorRole), default=CollaboratorRole.VIEWER, nullable=False
-    )
+    public_role = Column(String(32), default=CollaboratorRole.VIEWER.value, nullable=False)
     created_at = Column(
         DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
     )
@@ -62,9 +70,7 @@ class DocumentCollaborator(Base):
     user_id = Column(
         Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
-    role = Column(
-        Enum(CollaboratorRole), default=CollaboratorRole.EDITOR, nullable=False
-    )
+    role = Column(String(32), default=CollaboratorRole.EDITOR.value, nullable=False)
     created_at = Column(
         DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
     )

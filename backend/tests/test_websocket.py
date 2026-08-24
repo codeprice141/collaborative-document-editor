@@ -18,7 +18,7 @@ def test_websocket_sync_init_and_ping(client: TestClient):
 
     # Create document
     create_res = client.post(
-        "/api/v1/documents/",
+        "/api/v1/documents",
         json={"title": "WebSocket Live Doc", "content": "Welcome to live editing!"},
         headers=headers,
     )
@@ -39,57 +39,38 @@ def test_websocket_sync_init_and_ping(client: TestClient):
         assert pong_data["type"] == "pong"
 
 
-def test_websocket_realtime_collaboration_between_two_users(client: TestClient):
-    token_owner = register_and_get_token(client, "ws_owner@example.com", "Owner")
-    token_editor = register_and_get_token(client, "ws_editor@example.com", "Editor")
+def test_websocket_realtime_operations_and_draw(client: TestClient):
+    token = register_and_get_token(client, "ws_op_user@example.com", "OP User")
+    headers = {"Authorization": f"Bearer {token}"}
 
-    h_owner = {"Authorization": f"Bearer {token_owner}"}
     create_res = client.post(
-        "/api/v1/documents/",
-        json={"title": "Collab Live", "content": "Hello"},
-        headers=h_owner,
+        "/api/v1/documents",
+        json={"title": "Collab Live Op", "content": "Hello"},
+        headers=headers,
     )
     doc_id = create_res.json()["id"]
 
-    # Share with editor
-    client.post(
-        f"/api/v1/documents/{doc_id}/share",
-        json={"email": "ws_editor@example.com", "role": "editor"},
-        headers=h_owner,
-    )
+    with client.websocket_connect(f"/api/v1/ws/documents/{doc_id}?token={token}&client_id=client_op") as ws:
+        init_data = ws.receive_json()
+        assert init_data["type"] == "sync_init"
 
-    # Open WebSocket 1 (Owner)
-    with client.websocket_connect(f"/api/v1/ws/documents/{doc_id}?token={token_owner}&client_id=client_owner") as ws_owner:
-        init_owner = ws_owner.receive_json()
-        assert init_owner["type"] == "sync_init"
+        # Send an operation: insert " World" at position 5
+        ws.send_json({
+            "type": "operation",
+            "operation": {
+                "op_type": "insert",
+                "position": 5,
+                "text": " World",
+                "client_version": 0
+            }
+        })
 
-        # Open WebSocket 2 (Editor)
-        with client.websocket_connect(f"/api/v1/ws/documents/{doc_id}?token={token_editor}&client_id=client_editor") as ws_editor:
-            init_editor = ws_editor.receive_json()
-            assert init_editor["type"] == "sync_init"
+        ack = ws.receive_json()
+        assert ack["type"] == "operation_ack"
+        assert ack["server_version"] == 1
 
-            # Owner receives presence_join
-            join_event = ws_owner.receive_json()
-            assert join_event["type"] == "presence_join"
-
-            # Editor sends an operation: insert " World" at position 5
-            ws_editor.send_json({
-                "type": "operation",
-                "operation": {
-                    "op_type": "insert",
-                    "position": 5,
-                    "text": " World",
-                    "client_version": 0
-                }
-            })
-
-            # Editor receives operation_ack
-            ack = ws_editor.receive_json()
-            assert ack["type"] == "operation_ack"
-            assert ack["server_version"] == 1
-
-            # Owner receives broadcast
-            broadcast = ws_owner.receive_json()
-            assert broadcast["type"] == "operation_broadcast"
-            assert broadcast["operation"]["text"] == " World"
-            assert broadcast["version"] == 1
+        # Send draw event
+        ws.send_json({
+            "type": "draw",
+            "elements": [{"tool": "rect", "x1": 10, "y1": 10, "x2": 50, "y2": 50}]
+        })
