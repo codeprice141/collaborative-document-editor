@@ -3,6 +3,7 @@ import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 from app.core.config import settings
 from app.core.database import Base, engine
@@ -22,12 +23,17 @@ logger = logging.getLogger("collaborative_editor")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Lifespan context manager for database table creation, flusher loop, and graceful shutdown."""
+    """Lifespan context manager for database table creation, auto-migrations, flusher loop, and graceful shutdown."""
     logger.info("Initializing database tables for %s...", settings.PROJECT_NAME)
     try:
         Base.metadata.create_all(bind=engine)
+        # Auto-apply non-destructive column migrations
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE documents ADD COLUMN IF NOT EXISTS drawing_data TEXT DEFAULT '[]'"))
+            conn.execute(text("ALTER TABLE document_snapshots ADD COLUMN IF NOT EXISTS drawing_data TEXT DEFAULT '[]'"))
+            conn.commit()
     except Exception as exc:
-        logger.warning("Could not auto-create tables on startup (DB might be offline): %s", exc)
+        logger.warning("Auto-migration check on startup: %s", exc)
 
     # Start background Write-Behind flusher task
     flusher_task = asyncio.create_task(write_buffer.start_background_flusher())
