@@ -12,6 +12,9 @@ from app.core.metrics import metrics
 from app.services.write_behind_buffer import write_buffer
 from app.api.v1.router import api_router
 from app.api.v1.health import health_check
+from app.models.comment import DocumentComment, DocumentCommentReply
+from app.models.document import Document, DocumentCollaborator, DocumentSnapshot, DocumentOperation
+from app.models.user import User
 
 # Configure structured logging
 logging.basicConfig(
@@ -27,10 +30,12 @@ async def lifespan(app: FastAPI):
     logger.info("Initializing database tables for %s...", settings.PROJECT_NAME)
     try:
         Base.metadata.create_all(bind=engine)
-        # Auto-apply non-destructive column migrations
+        # Non-destructive auto-migrations
         with engine.connect() as conn:
             conn.execute(text("ALTER TABLE documents ADD COLUMN IF NOT EXISTS drawing_data TEXT DEFAULT '[]'"))
             conn.execute(text("ALTER TABLE document_snapshots ADD COLUMN IF NOT EXISTS drawing_data TEXT DEFAULT '[]'"))
+            conn.execute(text("ALTER TABLE documents ADD COLUMN IF NOT EXISTS is_public BOOLEAN DEFAULT FALSE"))
+            conn.execute(text("ALTER TABLE documents ADD COLUMN IF NOT EXISTS public_role VARCHAR(16) DEFAULT 'viewer'"))
             conn.commit()
     except Exception as exc:
         logger.warning("Auto-migration check on startup: %s", exc)

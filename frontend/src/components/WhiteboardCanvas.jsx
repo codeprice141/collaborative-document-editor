@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect } from "react";
 import ConfirmModal from "./ConfirmModal";
 import PromptModal from "./PromptModal";
 import {
+  MousePointer,
   Pen,
   Highlighter,
   Square,
@@ -14,7 +15,12 @@ import {
   Redo2,
   RotateCcw,
   Download,
-  PaintBucket
+  PaintBucket,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
+  Grid,
+  Trash2
 } from "lucide-react";
 
 const COLORS = [
@@ -22,7 +28,7 @@ const COLORS = [
   "#ef4444", // Red
   "#2563eb", // Blue
   "#16a34a", // Green
-  "#f59e0b", // Yellow/Amber
+  "#f59e0b", // Amber
   "#9333ea", // Purple
   "#ea580c", // Orange
   "#06b6d4", // Cyan
@@ -39,16 +45,28 @@ export default function WhiteboardCanvas({
   const [elements, setElements] = useState([]);
   const [history, setHistory] = useState([]);
   const [redoStack, setRedoStack] = useState([]);
-  const [tool, setTool] = useState("pen");
+  const [tool, setTool] = useState("select"); // "select" | "pen" | "highlighter" | "rect" | "circle" | "arrow" | "line" | "text" | "eraser"
   const [color, setColor] = useState("#2563eb");
   const [strokeWidth, setStrokeWidth] = useState(3);
   const [isFilled, setIsFilled] = useState(false);
+  const [showGrid, setShowGrid] = useState(true);
+
+  // Pan & Zoom 2D Transformation State
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+
+  // Shape Creation & Selection State
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentShape, setCurrentShape] = useState(null);
+  const [selectedId, setSelectedId] = useState(null);
+  const [isDraggingSelected, setIsDraggingSelected] = useState(false);
+  const [dragStartPos, setDragStartPos] = useState({ x: 0, y: 0 });
 
   // Custom Modals State
   const [showClearConfirm, setShowClearConfirm] = useState(false);
-  const [textPromptData, setTextPromptData] = useState(null); // { x, y }
+  const [textPromptData, setTextPromptData] = useState(null);
 
   // Load persistent elements on startup
   useEffect(() => {
@@ -58,7 +76,7 @@ export default function WhiteboardCanvas({
         setElements(parsed);
       }
     } catch (err) {
-      console.error("Failed to parse initial drawing elements:", err);
+      console.error("Failed to parse drawing data:", err);
     }
   }, [initialData]);
 
@@ -80,7 +98,58 @@ export default function WhiteboardCanvas({
     }
   }, [registerDrawListener]);
 
-  // Redraw canvas whenever elements or currentShape changes
+  // Keyboard Shortcuts (Delete, Space for Pan, Ctrl+Z/Y)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Delete" || e.key === "Backspace") {
+        if (selectedId && !isReadOnly) {
+          deleteSelectedElement();
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedId, isReadOnly, elements]);
+
+  // Transform screen coordinate to canvas virtual coordinate
+  const screenToCanvas = (clientX, clientY) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    const screenX = clientX - rect.left;
+    const screenY = clientY - rect.top;
+    return {
+      x: (screenX - pan.x) / zoom,
+      y: (screenY - pan.y) / zoom,
+    };
+  };
+
+  // Check if point hits an element
+  const getHitElement = (pt) => {
+    for (let i = elements.length - 1; i >= 0; i--) {
+      const el = elements[i];
+      if (el.tool === "rect") {
+        const minX = Math.min(el.x1, el.x2) - 5;
+        const maxX = Math.max(el.x1, el.x2) + 5;
+        const minY = Math.min(el.y1, el.y2) - 5;
+        const maxY = Math.max(el.y1, el.y2) + 5;
+        if (pt.x >= minX && pt.x <= maxX && pt.y >= minY && pt.y <= maxY) return el;
+      } else if (el.tool === "circle") {
+        const rx = Math.abs(el.x2 - el.x1) / 2;
+        const ry = Math.abs(el.y2 - el.y1) / 2;
+        const cx = Math.min(el.x1, el.x2) + rx;
+        const cy = Math.min(el.y1, el.y2) + ry;
+        if (Math.hypot(pt.x - cx, pt.y - cy) <= Math.max(rx, ry) + 10) return el;
+      } else if (el.tool === "text") {
+        if (Math.hypot(pt.x - el.x1, pt.y - el.y1) < 40) return el;
+      } else if (el.points) {
+        if (el.points.some((p) => Math.hypot(p.x - pt.x, p.y - pt.y) < 15)) return el;
+      }
+    }
+    return null;
+  };
+
+  // Render Canvas (Elements + Grid + Selection Bounding Box)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -94,6 +163,28 @@ export default function WhiteboardCanvas({
     ctx.lineJoin = "round";
 
     ctx.clearRect(0, 0, rect.width, rect.height);
+
+    // 1. Draw Dot Grid Background
+    if (showGrid) {
+      ctx.save();
+      ctx.fillStyle = "#cbd5e1";
+      const gridSize = 24 * zoom;
+      const startX = (pan.x % gridSize);
+      const startY = (pan.y % gridSize);
+      for (let x = startX; x < rect.width; x += gridSize) {
+        for (let y = startY; y < rect.height; y += gridSize) {
+          ctx.beginPath();
+          ctx.arc(x, y, 1.2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+    }
+
+    // 2. Apply Pan and Zoom Matrix
+    ctx.save();
+    ctx.translate(pan.x, pan.y);
+    ctx.scale(zoom, zoom);
 
     const allToRender = currentShape ? [...elements, currentShape] : elements;
 
@@ -165,25 +256,61 @@ export default function WhiteboardCanvas({
         ctx.fillText(el.text || "", el.x1, el.y1);
       }
 
+      // Draw Selection Bounding Box
+      if (el.id === selectedId) {
+        ctx.strokeStyle = "#2563eb";
+        ctx.lineWidth = 1.5 / zoom;
+        ctx.setLineDash([4, 4]);
+
+        let minX = 0, minY = 0, maxX = 0, maxY = 0;
+        if (el.x1 !== undefined && el.x2 !== undefined) {
+          minX = Math.min(el.x1, el.x2) - 8;
+          maxX = Math.max(el.x1, el.x2) + 8;
+          minY = Math.min(el.y1, el.y2) - 8;
+          maxY = Math.max(el.y1, el.y2) + 8;
+        } else if (el.points) {
+          minX = Math.min(...el.points.map((p) => p.x)) - 8;
+          maxX = Math.max(...el.points.map((p) => p.x)) + 8;
+          minY = Math.min(...el.points.map((p) => p.y)) - 8;
+          maxY = Math.max(...el.points.map((p) => p.y)) + 8;
+        }
+
+        ctx.strokeRect(minX, minY, maxX - minX, maxY - minY);
+      }
+
       ctx.restore();
     });
-  }, [elements, currentShape]);
 
-  const getCanvasCoords = (e) => {
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    return {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-    };
-  };
+    ctx.restore();
+  }, [elements, currentShape, pan, zoom, showGrid, selectedId]);
 
+  // Mouse Down Event
   const handleMouseDown = (e) => {
+    // Middle click or Spacebar for Canvas Pan
+    if (e.button === 1 || e.spaceKey) {
+      setIsPanning(true);
+      setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+      return;
+    }
+
     if (isReadOnly) return;
-    const coords = getCanvasCoords(e);
+    const pt = screenToCanvas(e.clientX, e.clientY);
+
+    // Selection Mode
+    if (tool === "select") {
+      const hit = getHitElement(pt);
+      if (hit) {
+        setSelectedId(hit.id);
+        setIsDraggingSelected(true);
+        setDragStartPos(pt);
+      } else {
+        setSelectedId(null);
+      }
+      return;
+    }
 
     if (tool === "text") {
-      setTextPromptData(coords);
+      setTextPromptData(pt);
       return;
     }
 
@@ -195,15 +322,15 @@ export default function WhiteboardCanvas({
         tool,
         color,
         strokeWidth,
-        points: [coords],
+        points: [pt],
       });
     } else if (tool === "eraser") {
       setElements((prev) =>
         prev.filter((el) => {
           if (el.points) {
-            return !el.points.some((p) => Math.hypot(p.x - coords.x, p.y - coords.y) < 15);
+            return !el.points.some((p) => Math.hypot(p.x - pt.x, p.y - pt.y) < 20);
           }
-          return Math.hypot((el.x1 || 0) - coords.x, (el.y1 || 0) - coords.y) > 30;
+          return Math.hypot((el.x1 || 0) - pt.x, (el.y1 || 0) - pt.y) > 30;
         })
       );
     } else {
@@ -213,37 +340,88 @@ export default function WhiteboardCanvas({
         color,
         strokeWidth,
         isFilled,
-        x1: coords.x,
-        y1: coords.y,
-        x2: coords.x,
-        y2: coords.y,
+        x1: pt.x,
+        y1: pt.y,
+        x2: pt.x,
+        y2: pt.y,
       });
     }
   };
 
+  // Mouse Move Event
   const handleMouseMove = (e) => {
+    if (isPanning) {
+      setPan({ x: e.clientX - panStart.x, y: e.clientY - panStart.y });
+      return;
+    }
+
+    if (isDraggingSelected && selectedId) {
+      const pt = screenToCanvas(e.clientX, e.clientY);
+      const dx = pt.x - dragStartPos.x;
+      const dy = pt.y - dragStartPos.y;
+      setDragStartPos(pt);
+
+      setElements((prev) =>
+        prev.map((el) => {
+          if (el.id !== selectedId) return el;
+          if (el.points) {
+            return { ...el, points: el.points.map((p) => ({ x: p.x + dx, y: p.y + dy })) };
+          }
+          return {
+            ...el,
+            x1: el.x1 + dx,
+            y1: el.y1 + dy,
+            x2: el.x2 + dx,
+            y2: el.y2 + dy,
+          };
+        })
+      );
+      return;
+    }
+
     if (!isDrawing || isReadOnly || !currentShape) return;
-    const coords = getCanvasCoords(e);
+    const pt = screenToCanvas(e.clientX, e.clientY);
 
     if (tool === "pen" || tool === "highlighter") {
       setCurrentShape((prev) => ({
         ...prev,
-        points: [...prev.points, coords],
+        points: [...prev.points, pt],
       }));
     } else {
       setCurrentShape((prev) => ({
         ...prev,
-        x2: coords.x,
-        y2: coords.y,
+        x2: pt.x,
+        y2: pt.y,
       }));
     }
   };
 
+  // Mouse Up Event
   const handleMouseUp = () => {
+    if (isPanning) {
+      setIsPanning(false);
+      return;
+    }
+
+    if (isDraggingSelected) {
+      setIsDraggingSelected(false);
+      if (onSendDraw) onSendDraw({ elements });
+      if (onSaveData) onSaveData(JSON.stringify(elements));
+      return;
+    }
+
     if (!isDrawing || !currentShape) return;
     setIsDrawing(false);
     commitNewElement(currentShape);
     setCurrentShape(null);
+  };
+
+  // Mouse Wheel Zoom
+  const handleWheel = (e) => {
+    e.preventDefault();
+    const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
+    const newZoom = Math.min(3.0, Math.max(0.4, zoom * zoomFactor));
+    setZoom(newZoom);
   };
 
   const commitNewElement = (el) => {
@@ -258,6 +436,16 @@ export default function WhiteboardCanvas({
     if (onSaveData) {
       onSaveData(JSON.stringify(updated));
     }
+  };
+
+  const deleteSelectedElement = () => {
+    if (!selectedId) return;
+    const updated = elements.filter((el) => el.id !== selectedId);
+    setHistory((prev) => [...prev, elements]);
+    setElements(updated);
+    setSelectedId(null);
+    if (onSendDraw) onSendDraw({ elements: updated });
+    if (onSaveData) onSaveData(JSON.stringify(updated));
   };
 
   const handleAddTextPrompt = (text) => {
@@ -282,7 +470,6 @@ export default function WhiteboardCanvas({
     setRedoStack((prev) => [elements, ...prev]);
     setHistory((prev) => prev.slice(0, -1));
     setElements(previous);
-
     if (onSendDraw) onSendDraw({ elements: previous });
     if (onSaveData) onSaveData(JSON.stringify(previous));
   };
@@ -293,7 +480,6 @@ export default function WhiteboardCanvas({
     setHistory((prev) => [...prev, elements]);
     setRedoStack((prev) => prev.slice(1));
     setElements(next);
-
     if (onSendDraw) onSendDraw({ elements: next });
     if (onSaveData) onSaveData(JSON.stringify(next));
   };
@@ -301,6 +487,7 @@ export default function WhiteboardCanvas({
   const handleConfirmClearBoard = () => {
     setHistory((prev) => [...prev, elements]);
     setElements([]);
+    setSelectedId(null);
     setShowClearConfirm(false);
     if (onSendDraw) onSendDraw({ elements: [] });
     if (onSaveData) onSaveData("[]");
@@ -317,7 +504,7 @@ export default function WhiteboardCanvas({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
-      {/* Floating Toolbar */}
+      {/* Top Floating Control Bar */}
       <div style={{
         position: "absolute", top: "16px", left: "50%", transform: "translateX(-50%)",
         backgroundColor: "rgba(255, 255, 255, 0.95)",
@@ -327,8 +514,11 @@ export default function WhiteboardCanvas({
         display: "flex", alignItems: "center", gap: "0.5rem", zIndex: 10,
         border: "1px solid #e2e8f0"
       }}>
-        {/* Shape & Tool Selectors */}
+        {/* Tool Selectors */}
         <div style={{ display: "flex", gap: "2px", borderRight: "1px solid #e2e8f0", paddingRight: "0.5rem" }}>
+          <button onClick={() => setTool("select")} style={toolBtn(tool === "select")} title="Select / Move Shape">
+            <MousePointer size={17} />
+          </button>
           <button onClick={() => setTool("pen")} style={toolBtn(tool === "pen")} title="Pen">
             <Pen size={17} />
           </button>
@@ -382,7 +572,7 @@ export default function WhiteboardCanvas({
           </button>
         </div>
 
-        {/* Stroke Width */}
+        {/* Thickness Slider */}
         <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", borderRight: "1px solid #e2e8f0", paddingRight: "0.5rem" }}>
           <input
             type="range"
@@ -395,8 +585,13 @@ export default function WhiteboardCanvas({
           />
         </div>
 
-        {/* Actions */}
+        {/* Actions & Delete Tool */}
         <div style={{ display: "flex", gap: "2px" }}>
+          {selectedId && (
+            <button onClick={deleteSelectedElement} style={{ ...toolBtn(false), color: "#dc2626" }} title="Delete Selected (Del)">
+              <Trash2 size={16} />
+            </button>
+          )}
           <button onClick={undo} disabled={history.length === 0} style={toolBtn(false)} title="Undo (Ctrl+Z)">
             <Undo2 size={16} />
           </button>
@@ -412,19 +607,58 @@ export default function WhiteboardCanvas({
         </div>
       </div>
 
-      {/* Canvas Area */}
+      {/* Bottom-Left Zoom & Grid Controls */}
       <div style={{
-        flex: 1, backgroundColor: "#ffffff", borderRadius: "14px",
-        border: "1px solid #e2e8f0", overflow: "hidden", margin: "1rem",
-        boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)"
+        position: "absolute", bottom: "24px", left: "24px", zIndex: 10,
+        backgroundColor: "rgba(255, 255, 255, 0.95)",
+        backdropFilter: "blur(8px)",
+        borderRadius: "10px", padding: "4px 8px",
+        display: "flex", alignItems: "center", gap: "6px",
+        border: "1px solid #e2e8f0", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)"
       }}>
+        <button onClick={() => setZoom((z) => Math.max(0.4, z - 0.1))} style={zoomBtn} title="Zoom Out">
+          <ZoomOut size={14} />
+        </button>
+        <span style={{ fontSize: "0.75rem", fontWeight: "700", color: "#334155", minWidth: "36px", textAlign: "center" }}>
+          {Math.round(zoom * 100)}%
+        </span>
+        <button onClick={() => setZoom((z) => Math.min(3.0, z + 0.1))} style={zoomBtn} title="Zoom In">
+          <ZoomIn size={14} />
+        </button>
+        <button onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }} style={zoomBtn} title="Reset View">
+          <Maximize2 size={13} />
+        </button>
+        <div style={{ width: "1px", height: "14px", backgroundColor: "#e2e8f0", margin: "0 2px" }} />
+        <button
+          onClick={() => setShowGrid(!showGrid)}
+          style={{ ...zoomBtn, color: showGrid ? "#2563eb" : "#94a3b8" }}
+          title="Toggle Dot Grid"
+        >
+          <Grid size={14} />
+        </button>
+      </div>
+
+      {/* Infinite Canvas */}
+      <div
+        style={{
+          flex: 1, backgroundColor: "#ffffff", borderRadius: "14px",
+          border: "1px solid #e2e8f0", overflow: "hidden", margin: "1rem",
+          boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)"
+        }}
+        onWheel={handleWheel}
+      >
         <canvas
           ref={canvasRef}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
-          style={{ width: "100%", height: "100%", cursor: tool === "eraser" ? "cell" : tool === "text" ? "text" : "crosshair", display: "block" }}
+          style={{
+            width: "100%",
+            height: "100%",
+            cursor: isPanning ? "grab" : tool === "select" ? "default" : tool === "eraser" ? "cell" : tool === "text" ? "text" : "crosshair",
+            display: "block"
+          }}
         />
       </div>
 
@@ -464,3 +698,15 @@ const toolBtn = (isActive) => ({
   justifyContent: "center",
   transition: "all 0.15s"
 });
+
+const zoomBtn = {
+  border: "none",
+  background: "none",
+  cursor: "pointer",
+  color: "#64748b",
+  padding: "4px",
+  borderRadius: "4px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center"
+};

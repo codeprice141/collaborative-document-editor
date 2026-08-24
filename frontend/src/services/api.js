@@ -147,4 +147,49 @@ export const api = {
     });
     return handleResponse(res, "Failed to restore version");
   },
+
+  // --- Comments & Threaded Discussions ---
+  async getComments(docId) {
+    const res = await fetch(`${API_BASE}/documents/${docId}/comments`, {
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(res, "Failed to fetch comments");
+  },
+
+  async createComment(docId, { content, selected_text, anchor_range }) {
+    const res = await fetch(`${API_BASE}/documents/${docId}/comments`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ content, selected_text, anchor_range }),
+    });
+    return handleResponse(res, "Failed to post comment");
+  },
+
+  async resolveComment(docId, commentId, is_resolved = true) {
+    const res = await fetch(`${API_BASE}/documents/${docId}/comments/${commentId}/resolve?is_resolved=${is_resolved}`, {
+      method: "PATCH",
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(res, "Failed to resolve comment");
+  },
+
+  async deleteComment(docId, commentId) {
+    const res = await fetch(`${API_BASE}/documents/${docId}/comments/${commentId}`, {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok && res.status !== 204) {
+      return handleResponse(res, "Failed to delete comment");
+    }
+    return true;
+  },
+
+  async replyComment(docId, commentId, content) {
+    const res = await fetch(`${API_BASE}/documents/${docId}/comments/${commentId}/replies`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ content }),
+    });
+    return handleResponse(res, "Failed to post reply");
+  },
 };

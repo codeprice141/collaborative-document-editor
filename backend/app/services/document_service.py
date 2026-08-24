@@ -22,6 +22,8 @@ class DocumentService:
             drawing_data=getattr(doc_in, "drawing_data", "[]") or "[]",
             version=0,
             owner_id=user_id,
+            is_public=False,
+            public_role=CollaboratorRole.VIEWER,
         )
         db.add(doc)
         db.flush()
@@ -67,7 +69,14 @@ class DocumentService:
             )
             .first()
         )
-        return collab.role if collab else None
+        if collab:
+            return collab.role
+        
+        # Check public link access
+        if doc.is_public:
+            return doc.public_role
+
+        return None
 
     @classmethod
     def get_document_with_access(
@@ -107,6 +116,10 @@ class DocumentService:
             doc.content = update_in.content
         if getattr(update_in, "drawing_data", None) is not None:
             doc.drawing_data = update_in.drawing_data
+        if update_in.is_public is not None:
+            doc.is_public = update_in.is_public
+        if update_in.public_role is not None:
+            doc.public_role = update_in.public_role
         doc.updated_at = datetime.now(timezone.utc)
         db.commit()
         db.refresh(doc)

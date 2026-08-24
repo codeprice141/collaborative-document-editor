@@ -22,6 +22,10 @@ class Document(Base):
     version = Column(Integer, nullable=False, default=0)
     owner_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     is_archived = Column(Boolean, default=False, nullable=False)
+    is_public = Column(Boolean, default=False, nullable=False)
+    public_role = Column(
+        Enum(CollaboratorRole), default=CollaboratorRole.VIEWER, nullable=False
+    )
     created_at = Column(
         DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
     )

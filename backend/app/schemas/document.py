@@ -19,6 +19,8 @@ class DocumentUpdate(BaseModel):
     title: Optional[str] = Field(None, min_length=1, max_length=255)
     content: Optional[str] = None
     drawing_data: Optional[str] = None
+    is_public: Optional[bool] = None
+    public_role: Optional[CollaboratorRole] = None
 
 
 class DocumentCollaboratorResponse(BaseModel):
@@ -51,6 +53,8 @@ class DocumentResponse(BaseModel):
     version: int
     owner_id: int
     is_archived: bool
+    is_public: bool = False
+    public_role: CollaboratorRole = CollaboratorRole.VIEWER
     created_at: datetime
     updated_at: datetime
     user_role: Optional[CollaboratorRole] = None

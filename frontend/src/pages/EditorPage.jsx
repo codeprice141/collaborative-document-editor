@@ -2,11 +2,15 @@ import React, { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { api } from "../services/api";
 import { useCollaboration } from "../hooks/useCollaboration";
+import { useAuth } from "../context/AuthContext";
 import RichTextEditor from "../components/RichTextEditor";
 import WhiteboardCanvas from "../components/WhiteboardCanvas";
 import CollaboratorDock from "../components/CollaboratorDock";
 import ShareModal from "../components/ShareModal";
 import RevisionHistoryDrawer from "../components/RevisionHistoryDrawer";
+import CommentsDrawer from "../components/CommentsDrawer";
+import ExportModal from "../components/ExportModal";
+import Toast from "../components/Toast";
 import {
   ArrowLeft,
   Share2,
@@ -14,19 +18,53 @@ import {
   FileText,
   Palette,
   CheckCircle,
-  FileEdit
+  FileEdit,
+  MessageSquare,
+  Download,
+  WifiOff
 } from "lucide-react";
 
 export default function EditorPage() {
   const { id } = useParams();
   const docId = parseInt(id, 10);
+  const { user: currentUser } = useAuth();
+
   const [docMeta, setDocMeta] = useState(null);
   const [title, setTitle] = useState("");
   const [titleSaved, setTitleSaved] = useState(false);
+
+  // Modals & Drawers
   const [showShare, setShowShare] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showComments, setShowComments] = useState(false);
+  const [showExport, setShowExport] = useState(false);
+  const [commentDraft, setCommentDraft] = useState(null);
+
+  // Toast Notification
+  const [toastMsg, setToastMsg] = useState("");
+  const [toastType, setToastType] = useState("success");
+
+  // Tab & Network
   const [activeTab, setActiveTab] = useState("text"); // "text" | "canvas"
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const drawListenerRef = useRef(null);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
+  const showToast = (msg, type = "success") => {
+    setToastMsg(msg);
+    setToastType(type);
+    setTimeout(() => setToastMsg(""), 3500);
+  };
 
   const registerDrawListener = (callback) => {
     drawListenerRef.current = callback;
@@ -89,10 +127,13 @@ export default function EditorPage() {
       op_type: "replace",
       text: newHtml,
     });
+    // Cache in local storage for offline resilience
+    localStorage.setItem(`offline_doc_${docId}`, newHtml);
   };
 
   const handleSaveDrawing = async (elementsJson) => {
     setDrawingData(elementsJson);
+    localStorage.setItem(`offline_draw_${docId}`, elementsJson);
     if (!isReadOnly) {
       try {
         await api.updateDocument(docId, { drawing_data: elementsJson });
@@ -102,10 +143,32 @@ export default function EditorPage() {
     }
   };
 
+  const handleOpenCommentDraft = (selectedText) => {
+    setCommentDraft({ selectedText });
+    setShowComments(true);
+  };
+
+  const handleImportContent = (importedHtml) => {
+    handleHtmlChange(importedHtml);
+    showToast("File imported successfully!");
+  };
+
   const allCollaborators = docMeta?.collaborators || [];
 
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column", backgroundColor: "#f8fafc" }}>
+      {/* Offline Alert Banner */}
+      {!isOnline && (
+        <div style={{
+          backgroundColor: "#fef3c7", color: "#92400e", padding: "0.4rem 1rem",
+          display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem",
+          fontSize: "0.8125rem", fontWeight: "600", borderBottom: "1px solid #fde68a"
+        }}>
+          <WifiOff size={15} />
+          <span>You are working offline. Changes are saved locally and will auto-sync when connection is restored.</span>
+        </div>
+      )}
+
       {/* Clean Minimalist Navigation Top Bar */}
       <header style={{
         backgroundColor: "#ffffff",
@@ -218,14 +281,37 @@ export default function EditorPage() {
         </div>
 
         {/* Right: Actions */}
-        <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          {/* Comments Button */}
           <button
-            onClick={() => setShowHistory(true)}
+            onClick={() => setShowComments(!showComments)}
             style={{
               display: "flex",
               alignItems: "center",
               gap: "0.35rem",
-              padding: "0.45rem 0.85rem",
+              padding: "0.45rem 0.75rem",
+              borderRadius: "8px",
+              border: "1px solid #cbd5e1",
+              backgroundColor: showComments ? "#eff6ff" : "#ffffff",
+              color: showComments ? "#2563eb" : "#475569",
+              fontSize: "0.875rem",
+              cursor: "pointer",
+              fontWeight: "500"
+            }}
+            title="Comments & Discussions"
+          >
+            <MessageSquare size={16} />
+            <span>Comments</span>
+          </button>
+
+          {/* Export / Import Button */}
+          <button
+            onClick={() => setShowExport(true)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.35rem",
+              padding: "0.45rem 0.75rem",
               borderRadius: "8px",
               border: "1px solid #cbd5e1",
               backgroundColor: "#ffffff",
@@ -234,12 +320,36 @@ export default function EditorPage() {
               color: "#475569",
               fontWeight: "500"
             }}
+            title="Export & Import"
+          >
+            <Download size={16} />
+            <span>Export</span>
+          </button>
+
+          {/* History Button */}
+          <button
+            onClick={() => setShowHistory(true)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.35rem",
+              padding: "0.45rem 0.75rem",
+              borderRadius: "8px",
+              border: "1px solid #cbd5e1",
+              backgroundColor: "#ffffff",
+              fontSize: "0.875rem",
+              cursor: "pointer",
+              color: "#475569",
+              fontWeight: "500"
+            }}
+            title="Version History"
           >
             <History size={16} />
             <span>History</span>
           </button>
 
-          {docMeta?.user_role === "owner" && (
+          {/* Share Button */}
+          {(docMeta?.user_role === "owner" || docMeta?.is_public) && (
             <button
               onClick={() => setShowShare(true)}
               style={{
@@ -281,6 +391,7 @@ export default function EditorPage() {
               activeUsers={activeUsers}
               remoteCursors={remoteCursors}
               onCursorChange={(idx) => sendCursor(idx, true)}
+              onOpenCommentDraft={handleOpenCommentDraft}
             />
           </div>
         ) : (
@@ -302,15 +413,19 @@ export default function EditorPage() {
         />
       </main>
 
+      {/* Share Modal */}
       {showShare && (
         <ShareModal
           docId={docId}
+          isPublic={docMeta?.is_public}
+          publicRole={docMeta?.public_role}
           collaborators={allCollaborators}
           onClose={() => setShowShare(false)}
           onShared={fetchDoc}
         />
       )}
 
+      {/* Revision History Drawer */}
       {showHistory && (
         <RevisionHistoryDrawer
           docId={docId}
@@ -319,9 +434,35 @@ export default function EditorPage() {
           onRollback={(restored) => {
             setContent(restored.content);
             fetchDoc();
+            showToast("Restored document revision successfully!");
           }}
         />
       )}
+
+      {/* Inline Comments & Threaded Discussions Drawer */}
+      {showComments && (
+        <CommentsDrawer
+          docId={docId}
+          currentUserId={currentUser?.id}
+          initialDraft={commentDraft}
+          onClearDraft={() => setCommentDraft(null)}
+          onClose={() => setShowComments(false)}
+        />
+      )}
+
+      {/* Multi-Format Export & Import Modal */}
+      {showExport && (
+        <ExportModal
+          isOpen={showExport}
+          title={title}
+          htmlContent={content}
+          onImportContent={handleImportContent}
+          onClose={() => setShowExport(false)}
+        />
+      )}
+
+      {/* Toast Notification */}
+      <Toast message={toastMsg} type={toastType} onClose={() => setToastMsg("")} />
     </div>
   );
 }

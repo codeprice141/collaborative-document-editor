@@ -5,7 +5,9 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.api.deps import get_current_user
 from app.models.user import User
-from app.models.document import CollaboratorRole, Document
+from app.models.document import CollaboratorRole
+from app.services.document_service import DocumentService
+from app.services.auth_service import AuthService
 from app.schemas.document import (
     DocumentCreate,
     DocumentUpdate,
@@ -16,44 +18,45 @@ from app.schemas.document import (
     SnapshotCreate,
     SnapshotResponse,
 )
-from app.services.document_service import DocumentService
-from app.services.auth_service import AuthService
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
 
-@router.post("/", response_model=DocumentDetailResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
 def create_document(
     doc_in: DocumentCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Creates a new collaborative document."""
+    """Creates a new document with the current user as the owner."""
     doc = DocumentService.create_document(db, current_user.id, doc_in)
     return {
         "id": doc.id,
         "title": doc.title,
         "content": doc.content,
+        "drawing_data": doc.drawing_data,
         "version": doc.version,
         "owner_id": doc.owner_id,
         "is_archived": doc.is_archived,
+        "is_public": doc.is_public,
+        "public_role": doc.public_role,
         "created_at": doc.created_at,
         "updated_at": doc.updated_at,
         "user_role": CollaboratorRole.OWNER,
         "owner": current_user,
-        "collaborators": doc.collaborators,
+        "collaborators": [],
     }
 
 
-@router.get("/", response_model=List[DocumentResponse])
+@router.get("", response_model=List[DocumentResponse])
 def list_documents(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Lists all documents owned or shared with the current user."""
-    docs_and_roles = DocumentService.list_user_documents(db, current_user.id)
+    """Lists all accessible documents for the current user."""
+    doc_role_tuples = DocumentService.list_user_documents(db, current_user.id)
     response = []
-    for doc, role in docs_and_roles:
+    for doc, role in doc_role_tuples:
         response.append(
             {
                 "id": doc.id,
@@ -61,6 +64,8 @@ def list_documents(
                 "version": doc.version,
                 "owner_id": doc.owner_id,
                 "is_archived": doc.is_archived,
+                "is_public": doc.is_public,
+                "public_role": doc.public_role,
                 "created_at": doc.created_at,
                 "updated_at": doc.updated_at,
                 "user_role": role,
@@ -75,7 +80,7 @@ def get_document(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Retrieves document content and details if permitted."""
+    """Retrieves document detail and user's specific role for permissions."""
     doc, role = DocumentService.get_document_with_access(db, doc_id, current_user.id)
     if not doc:
         raise HTTPException(
@@ -86,9 +91,12 @@ def get_document(
         "id": doc.id,
         "title": doc.title,
         "content": doc.content,
+        "drawing_data": doc.drawing_data,
         "version": doc.version,
         "owner_id": doc.owner_id,
         "is_archived": doc.is_archived,
+        "is_public": doc.is_public,
+        "public_role": doc.public_role,
         "created_at": doc.created_at,
         "updated_at": doc.updated_at,
         "user_role": role,
@@ -120,9 +128,13 @@ def update_document(
     return {
         "id": updated_doc.id,
         "title": updated_doc.title,
+        "content": updated_doc.content,
+        "drawing_data": updated_doc.drawing_data,
         "version": updated_doc.version,
         "owner_id": updated_doc.owner_id,
         "is_archived": updated_doc.is_archived,
+        "is_public": updated_doc.is_public,
+        "public_role": updated_doc.public_role,
         "created_at": updated_doc.created_at,
         "updated_at": updated_doc.updated_at,
         "user_role": role,
@@ -266,9 +278,12 @@ def rollback_document(
         "id": restored.id,
         "title": restored.title,
         "content": restored.content,
+        "drawing_data": restored.drawing_data,
         "version": restored.version,
         "owner_id": restored.owner_id,
         "is_archived": restored.is_archived,
+        "is_public": restored.is_public,
+        "public_role": restored.public_role,
         "created_at": restored.created_at,
         "updated_at": restored.updated_at,
         "user_role": role,

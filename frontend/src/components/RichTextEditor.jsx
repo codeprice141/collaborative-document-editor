@@ -15,7 +15,8 @@ import {
   RemoveFormatting,
   AlignLeft,
   AlignCenter,
-  AlignRight
+  AlignRight,
+  MessageSquarePlus
 } from "lucide-react";
 
 export default function RichTextEditor({
@@ -24,10 +25,15 @@ export default function RichTextEditor({
   isReadOnly,
   activeUsers = [],
   remoteCursors = {},
-  onCursorChange
+  onCursorChange,
+  onOpenCommentDraft
 }) {
   const editorRef = useRef(null);
   const isInternalUpdate = useRef(false);
+
+  // Floating comment button state
+  const [selectedText, setSelectedText] = useState("");
+  const [selectionCoords, setSelectionCoords] = useState(null);
 
   const [activeStyles, setActiveStyles] = useState({
     bold: false,
@@ -73,6 +79,24 @@ export default function RichTextEditor({
           }
           node = node.parentNode;
         }
+
+        // Check text selection for floating comment button
+        const text = selection.toString().trim();
+        if (text.length > 0) {
+          const range = selection.getRangeAt(0);
+          const rect = range.getBoundingClientRect();
+          setSelectedText(text);
+          setSelectionCoords({
+            top: rect.top - 45,
+            left: rect.left + rect.width / 2,
+          });
+        } else {
+          setSelectedText("");
+          setSelectionCoords(null);
+        }
+      } else {
+        setSelectedText("");
+        setSelectionCoords(null);
       }
 
       setActiveStyles({
@@ -141,6 +165,16 @@ export default function RichTextEditor({
     updateActiveStyles();
   };
 
+  const handleFloatingCommentClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onOpenCommentDraft && selectedText) {
+      onOpenCommentDraft(selectedText);
+      setSelectedText("");
+      setSelectionCoords(null);
+    }
+  };
+
   const HIGHLIGHT_COLORS = ["#fef08a", "#bbf7d0", "#bae6fd", "#fbcfe8", "#fed7aa"];
 
   return (
@@ -150,9 +184,48 @@ export default function RichTextEditor({
       width: "100%",
       maxWidth: "880px",
       alignItems: "center",
-      paddingBottom: "30vh"
+      paddingBottom: "30vh",
+      position: "relative"
     }}>
-      {/* Sticky Rich Formatting Toolbar with Active Highlights */}
+      {/* Floating Mini Action for Selected Text */}
+      {selectionCoords && selectedText && !isReadOnly && (
+        <div style={{
+          position: "fixed",
+          top: `${Math.max(10, selectionCoords.top)}px`,
+          left: `${selectionCoords.left}px`,
+          transform: "translateX(-50%)",
+          zIndex: 40,
+          backgroundColor: "#0f172a",
+          borderRadius: "8px",
+          padding: "4px 8px",
+          boxShadow: "0 10px 15px -3px rgba(0,0,0,0.2)",
+          display: "flex",
+          alignItems: "center",
+          gap: "4px",
+          animation: "fadeIn 0.15s ease-out"
+        }}>
+          <button
+            onClick={handleFloatingCommentClick}
+            style={{
+              background: "none",
+              border: "none",
+              color: "#ffffff",
+              fontSize: "0.75rem",
+              fontWeight: "600",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+              padding: "2px 4px"
+            }}
+          >
+            <MessageSquarePlus size={14} color="#60a5fa" />
+            <span>Comment</span>
+          </button>
+        </div>
+      )}
+
+      {/* Sticky Rich Formatting Toolbar */}
       {!isReadOnly && (
         <div style={{
           position: "sticky",

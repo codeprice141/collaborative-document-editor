@@ -1,47 +1,57 @@
 import React, { useState, useEffect } from "react";
 import { api } from "../services/api";
 import { useAuth } from "../context/AuthContext";
-import { X, UserPlus, Copy, Check, Trash2, Search, UserCheck } from "lucide-react";
+import {
+  UserPlus,
+  X,
+  Trash2,
+  Copy,
+  Check,
+  Globe,
+  Lock,
+  Link as LinkIcon
+} from "lucide-react";
 
-export default function ShareModal({ docId, collaborators = [], onClose, onShared }) {
+export default function ShareModal({
+  docId,
+  isPublic = false,
+  publicRole = "viewer",
+  collaborators = [],
+  onClose,
+  onShared
+}) {
   const { user: currentUser } = useAuth();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("editor");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [copied, setCopied] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [publicActive, setPublicActive] = useState(isPublic);
+  const [activePublicRole, setActivePublicRole] = useState(publicRole);
+
   const [userSuggestions, setUserSuggestions] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Search user suggestions
   useEffect(() => {
-    if (searchQuery.trim().length > 0) {
-      api.searchUsers(searchQuery.trim())
-        .then((users) => {
-          // Exclude current user from suggestions
-          setUserSuggestions(users.filter((u) => u.email !== currentUser?.email));
-        })
-        .catch(() => {});
-    } else {
-      setUserSuggestions([]);
-    }
-  }, [searchQuery, currentUser]);
-
-  const handleCopyMyEmail = () => {
-    if (currentUser?.email) {
-      navigator.clipboard.writeText(currentUser.email);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
+    const searchTimer = setTimeout(async () => {
+      if (searchQuery.trim().length >= 1) {
+        try {
+          const results = await api.searchUsers(searchQuery);
+          setUserSuggestions(results.filter((u) => u.id !== currentUser?.id));
+        } catch (e) {}
+      } else {
+        setUserSuggestions([]);
+      }
+    }, 200);
+    return () => clearTimeout(searchTimer);
+  }, [searchQuery, currentUser?.id]);
 
   const handleShare = async (e) => {
     e.preventDefault();
-    if (!email.trim()) return;
-    setLoading(true);
     setError("");
     setSuccess("");
+    setLoading(true);
 
     try {
       await api.shareDocument(docId, email.trim(), role);
@@ -57,6 +67,40 @@ export default function ShareModal({ docId, collaborators = [], onClose, onShare
     }
   };
 
+  const handleTogglePublicLink = async (enable) => {
+    try {
+      await api.updateDocument(docId, {
+        is_public: enable,
+        public_role: activePublicRole,
+      });
+      setPublicActive(enable);
+      if (onShared) onShared();
+    } catch (err) {
+      setError("Failed to update link sharing settings");
+    }
+  };
+
+  const handlePublicRoleChange = async (newRole) => {
+    setActivePublicRole(newRole);
+    if (publicActive) {
+      try {
+        await api.updateDocument(docId, {
+          public_role: newRole,
+        });
+        if (onShared) onShared();
+      } catch (err) {
+        setError("Failed to update public role");
+      }
+    }
+  };
+
+  const handleCopyPublicLink = () => {
+    const link = `${window.location.origin}/documents/${docId}`;
+    navigator.clipboard.writeText(link);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2500);
+  };
+
   const handleRemove = async (userId) => {
     try {
       await api.removeCollaborator(docId, userId);
@@ -66,9 +110,9 @@ export default function ShareModal({ docId, collaborators = [], onClose, onShare
     }
   };
 
-  const selectUserSuggestion = (suggestedEmail) => {
-    setEmail(suggestedEmail);
-    setSearchQuery(suggestedEmail);
+  const selectUserSuggestion = (userEmail) => {
+    setEmail(userEmail);
+    setSearchQuery("");
     setUserSuggestions([]);
   };
 
@@ -76,20 +120,17 @@ export default function ShareModal({ docId, collaborators = [], onClose, onShare
     <div style={{
       position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
       backgroundColor: "rgba(15, 23, 42, 0.6)",
+      backdropFilter: "blur(6px)",
       display: "flex", justifyContent: "center", alignItems: "center",
-      zIndex: 50, backdropFilter: "blur(4px)", padding: "1rem"
+      zIndex: 100, padding: "1rem"
     }}>
       <div style={{
-        backgroundColor: "#ffffff",
-        borderRadius: "16px",
-        padding: "1.75rem",
-        width: "100%",
-        maxWidth: "520px",
-        boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
-        maxHeight: "90vh",
-        overflowY: "auto"
+        backgroundColor: "#ffffff", borderRadius: "16px", padding: "1.75rem",
+        width: "100%", maxWidth: "520px",
+        boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)",
+        maxHeight: "90vh", overflowY: "auto"
       }}>
-        {/* Header */}
+        {/* Modal Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <div style={{ padding: "0.5rem", borderRadius: "8px", backgroundColor: "#eff6ff", color: "#2563eb" }}>
@@ -97,7 +138,7 @@ export default function ShareModal({ docId, collaborators = [], onClose, onShare
             </div>
             <div>
               <h3 style={{ fontSize: "1.125rem", fontWeight: "700", color: "#0f172a" }}>Share Document</h3>
-              <p style={{ fontSize: "0.75rem", color: "#64748b" }}>Invite collaborators or share your email ID</p>
+              <p style={{ fontSize: "0.75rem", color: "#64748b" }}>Manage access, public links and permissions</p>
             </div>
           </div>
           <button onClick={onClose} style={{ border: "none", background: "none", cursor: "pointer", color: "#94a3b8" }}>
@@ -105,35 +146,72 @@ export default function ShareModal({ docId, collaborators = [], onClose, onShare
           </button>
         </div>
 
-        {/* Your Identity / Copy Email Banner */}
+        {/* Public Share Link Card */}
         <div style={{
-          backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "10px",
-          padding: "0.75rem 1rem", marginBottom: "1.25rem", display: "flex",
-          justifyContent: "space-between", alignItems: "center"
+          backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "12px",
+          padding: "1rem", marginBottom: "1.25rem"
         }}>
-          <div>
-            <div style={{ fontSize: "0.75rem", fontWeight: "600", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Your Email ID</div>
-            <div style={{ fontSize: "0.875rem", fontWeight: "600", color: "#0f172a" }}>{currentUser?.email}</div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              {publicActive ? <Globe size={18} color="#16a34a" /> : <Lock size={18} color="#64748b" />}
+              <div>
+                <div style={{ fontSize: "0.875rem", fontWeight: "700", color: "#0f172a" }}>
+                  {publicActive ? "Public Link Enabled" : "Restricted Link"}
+                </div>
+                <div style={{ fontSize: "0.75rem", color: "#64748b" }}>
+                  {publicActive ? "Anyone with link can access" : "Only invited collaborators can access"}
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => handleTogglePublicLink(!publicActive)}
+              style={{
+                padding: "0.35rem 0.75rem", borderRadius: "6px",
+                border: "1px solid #cbd5e1", backgroundColor: publicActive ? "#dcfce7" : "#ffffff",
+                color: publicActive ? "#166534" : "#475569", fontSize: "0.75rem", fontWeight: "700",
+                cursor: "pointer"
+              }}
+            >
+              {publicActive ? "Public On ✓" : "Turn On Link"}
+            </button>
           </div>
-          <button
-            onClick={handleCopyMyEmail}
-            style={{
-              display: "flex", alignItems: "center", gap: "0.35rem",
-              padding: "0.4rem 0.75rem", borderRadius: "6px",
-              border: "1px solid #cbd5e1", backgroundColor: "#ffffff",
-              color: copied ? "#16a34a" : "#2563eb", fontSize: "0.8125rem",
-              fontWeight: "600", cursor: "pointer"
-            }}
-          >
-            {copied ? <Check size={14} /> : <Copy size={14} />}
-            <span>{copied ? "Copied!" : "Copy Email"}</span>
-          </button>
+
+          {publicActive && (
+            <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", borderTop: "1px solid #e2e8f0", paddingTop: "0.75rem" }}>
+              <select
+                value={activePublicRole}
+                onChange={(e) => handlePublicRoleChange(e.target.value)}
+                style={{
+                  padding: "0.35rem 0.6rem", borderRadius: "6px",
+                  border: "1px solid #cbd5e1", fontSize: "0.75rem", backgroundColor: "#fff"
+                }}
+              >
+                <option value="viewer">Can View</option>
+                <option value="editor">Can Edit</option>
+              </select>
+
+              <button
+                onClick={handleCopyPublicLink}
+                style={{
+                  flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.35rem",
+                  padding: "0.4rem 0.75rem", borderRadius: "6px", border: "1px solid #2563eb",
+                  backgroundColor: copiedLink ? "#dbeafe" : "#2563eb",
+                  color: copiedLink ? "#1e40af" : "#ffffff", fontSize: "0.8125rem", fontWeight: "600",
+                  cursor: "pointer"
+                }}
+              >
+                {copiedLink ? <Check size={14} /> : <Copy size={14} />}
+                <span>{copiedLink ? "Link Copied to Clipboard!" : "Copy Public Link"}</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {error && <div style={{ backgroundColor: "#fef2f2", color: "#b91c1c", padding: "0.6rem", borderRadius: "8px", fontSize: "0.875rem", marginBottom: "1rem" }}>{error}</div>}
         {success && <div style={{ backgroundColor: "#f0fdf4", color: "#15803d", padding: "0.6rem", borderRadius: "8px", fontSize: "0.875rem", marginBottom: "1rem" }}>{success}</div>}
 
-        {/* Invite Form */}
+        {/* Invite Teammate Form */}
         <form onSubmit={handleShare} style={{ marginBottom: "1.5rem", position: "relative" }}>
           <div style={{ display: "flex", gap: "0.5rem" }}>
             <div style={{ position: "relative", flex: 1 }}>
@@ -147,8 +225,8 @@ export default function ShareModal({ docId, collaborators = [], onClose, onShare
                 }}
                 required
                 style={{
-                  width: "100%", padding: "0.6rem 0.75rem", borderRadius: "8px",
-                  border: "1px solid #cbd5e1", fontSize: "0.875rem"
+                  width: "100%", padding: "0.55rem 0.75rem", borderRadius: "8px",
+                  border: "1px solid #cbd5e1", fontSize: "0.875rem", outline: "none"
                 }}
               />
             </div>
@@ -157,19 +235,19 @@ export default function ShareModal({ docId, collaborators = [], onClose, onShare
               value={role}
               onChange={(e) => setRole(e.target.value)}
               style={{
-                padding: "0.6rem 0.75rem", borderRadius: "8px",
+                padding: "0.55rem 0.75rem", borderRadius: "8px",
                 border: "1px solid #cbd5e1", fontSize: "0.875rem", backgroundColor: "#fff"
               }}
             >
-              <option value="editor">Editor (Can edit)</option>
-              <option value="viewer">Viewer (Read-only)</option>
+              <option value="editor">Editor</option>
+              <option value="viewer">Viewer</option>
             </select>
 
             <button
               type="submit"
               disabled={loading}
               style={{
-                padding: "0.6rem 1.25rem", backgroundColor: "#2563eb", color: "#fff",
+                padding: "0.55rem 1.1rem", backgroundColor: "#2563eb", color: "#fff",
                 border: "none", borderRadius: "8px", fontSize: "0.875rem", fontWeight: "600",
                 cursor: "pointer"
               }}
@@ -209,8 +287,8 @@ export default function ShareModal({ docId, collaborators = [], onClose, onShare
 
         {/* Collaborators List */}
         <div>
-          <h4 style={{ fontSize: "0.875rem", fontWeight: "600", color: "#64748b", marginBottom: "0.75rem" }}>
-            Current Collaborators ({collaborators.length})
+          <h4 style={{ fontSize: "0.875rem", fontWeight: "700", color: "#475569", marginBottom: "0.75rem" }}>
+            Collaborators ({collaborators.length})
           </h4>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
             {collaborators.map((c) => (
@@ -221,11 +299,11 @@ export default function ShareModal({ docId, collaborators = [], onClose, onShare
               }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
                   <div style={{
-                    width: "36px", height: "36px", borderRadius: "50%",
+                    width: "32px", height: "32px", borderRadius: "50%",
                     backgroundColor: c.role === "owner" ? "#dbeafe" : "#e0e7ff",
                     color: c.role === "owner" ? "#1e40af" : "#4338ca",
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    fontWeight: "700", fontSize: "0.875rem"
+                    fontWeight: "700", fontSize: "0.8125rem"
                   }}>
                     {c.user.full_name.charAt(0).toUpperCase()}
                   </div>
@@ -239,7 +317,7 @@ export default function ShareModal({ docId, collaborators = [], onClose, onShare
 
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                   <span style={{
-                    fontSize: "0.75rem", padding: "0.25rem 0.6rem", borderRadius: "9999px",
+                    fontSize: "0.75rem", padding: "0.2rem 0.55rem", borderRadius: "9999px",
                     backgroundColor: c.role === "owner" ? "#dbeafe" : c.role === "editor" ? "#dcfce7" : "#f1f5f9",
                     color: c.role === "owner" ? "#1e40af" : c.role === "editor" ? "#166534" : "#475569",
                     fontWeight: "600", textTransform: "capitalize"
@@ -253,7 +331,7 @@ export default function ShareModal({ docId, collaborators = [], onClose, onShare
                       style={{ border: "none", background: "none", cursor: "pointer", color: "#ef4444", padding: "0.25rem" }}
                       title="Remove access"
                     >
-                      <Trash2 size={16} />
+                      <Trash2 size={15} />
                     </button>
                   )}
                 </div>
