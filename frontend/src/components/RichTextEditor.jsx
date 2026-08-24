@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import {
   Bold,
   Italic,
@@ -29,6 +29,79 @@ export default function RichTextEditor({
   const editorRef = useRef(null);
   const isInternalUpdate = useRef(false);
 
+  const [activeStyles, setActiveStyles] = useState({
+    bold: false,
+    italic: false,
+    underline: false,
+    strikeThrough: false,
+    h1: false,
+    h2: false,
+    h3: false,
+    p: false,
+    ul: false,
+    ol: false,
+    quote: false,
+    code: false,
+    justifyLeft: false,
+    justifyCenter: false,
+    justifyRight: false,
+  });
+
+  const updateActiveStyles = () => {
+    if (isReadOnly || !editorRef.current) return;
+    try {
+      const isBold = document.queryCommandState("bold");
+      const isItalic = document.queryCommandState("italic");
+      const isUnderline = document.queryCommandState("underline");
+      const isStrike = document.queryCommandState("strikeThrough");
+      const isUl = document.queryCommandState("insertUnorderedList");
+      const isOl = document.queryCommandState("insertOrderedList");
+      const isLeft = document.queryCommandState("justifyLeft");
+      const isCenter = document.queryCommandState("justifyCenter");
+      const isRight = document.queryCommandState("justifyRight");
+
+      // Check current block tag
+      const selection = window.getSelection();
+      let currentBlock = "";
+      if (selection && selection.rangeCount > 0) {
+        let node = selection.anchorNode;
+        while (node && node !== editorRef.current) {
+          const tag = node.nodeName?.toLowerCase();
+          if (["h1", "h2", "h3", "blockquote", "pre", "p"].includes(tag)) {
+            currentBlock = tag;
+            break;
+          }
+          node = node.parentNode;
+        }
+      }
+
+      setActiveStyles({
+        bold: isBold,
+        italic: isItalic,
+        underline: isUnderline,
+        strikeThrough: isStrike,
+        h1: currentBlock === "h1",
+        h2: currentBlock === "h2",
+        h3: currentBlock === "h3",
+        p: currentBlock === "p" || (!currentBlock && !isUl && !isOl),
+        ul: isUl,
+        ol: isOl,
+        quote: currentBlock === "blockquote",
+        code: currentBlock === "pre",
+        justifyLeft: isLeft,
+        justifyCenter: isCenter,
+        justifyRight: isRight,
+      });
+    } catch (e) {}
+  };
+
+  useEffect(() => {
+    document.addEventListener("selectionchange", updateActiveStyles);
+    return () => {
+      document.removeEventListener("selectionchange", updateActiveStyles);
+    };
+  }, [isReadOnly]);
+
   // Sync incoming HTML without resetting cursor during local typing
   useEffect(() => {
     if (editorRef.current && !isInternalUpdate.current) {
@@ -45,6 +118,7 @@ export default function RichTextEditor({
     if (editorRef.current) {
       editorRef.current.focus();
       handleInput();
+      updateActiveStyles();
     }
   };
 
@@ -54,6 +128,7 @@ export default function RichTextEditor({
     const newHtml = editorRef.current.innerHTML;
     onHtmlChange(newHtml);
     sendCursorPosition();
+    updateActiveStyles();
   };
 
   const sendCursorPosition = () => {
@@ -63,6 +138,7 @@ export default function RichTextEditor({
       const range = selection.getRangeAt(0);
       onCursorChange(range.startOffset);
     }
+    updateActiveStyles();
   };
 
   const HIGHLIGHT_COLORS = ["#fef08a", "#bbf7d0", "#bae6fd", "#fbcfe8", "#fed7aa"];
@@ -76,7 +152,7 @@ export default function RichTextEditor({
       alignItems: "center",
       paddingBottom: "30vh"
     }}>
-      {/* Sticky Rich Formatting Toolbar */}
+      {/* Sticky Rich Formatting Toolbar with Active Highlights */}
       {!isReadOnly && (
         <div style={{
           position: "sticky",
@@ -96,61 +172,121 @@ export default function RichTextEditor({
         }}>
           {/* Text Styles */}
           <div style={{ display: "flex", gap: "2px", borderRight: "1px solid #e2e8f0", paddingRight: "0.35rem" }}>
-            <button onClick={() => exec("bold")} style={toolBtnStyle} title="Bold (Ctrl+B)">
+            <button
+              onClick={() => exec("bold")}
+              style={toolBtn(activeStyles.bold)}
+              title="Bold (Ctrl+B)"
+            >
               <Bold size={15} />
             </button>
-            <button onClick={() => exec("italic")} style={toolBtnStyle} title="Italic (Ctrl+I)">
+            <button
+              onClick={() => exec("italic")}
+              style={toolBtn(activeStyles.italic)}
+              title="Italic (Ctrl+I)"
+            >
               <Italic size={15} />
             </button>
-            <button onClick={() => exec("underline")} style={toolBtnStyle} title="Underline (Ctrl+U)">
+            <button
+              onClick={() => exec("underline")}
+              style={toolBtn(activeStyles.underline)}
+              title="Underline (Ctrl+U)"
+            >
               <Underline size={15} />
             </button>
-            <button onClick={() => exec("strikeThrough")} style={toolBtnStyle} title="Strikethrough">
+            <button
+              onClick={() => exec("strikeThrough")}
+              style={toolBtn(activeStyles.strikeThrough)}
+              title="Strikethrough"
+            >
               <Strikethrough size={15} />
             </button>
           </div>
 
           {/* Headings */}
           <div style={{ display: "flex", gap: "2px", borderRight: "1px solid #e2e8f0", paddingRight: "0.35rem" }}>
-            <button onClick={() => exec("formatBlock", "<h1>")} style={toolBtnStyle} title="Heading 1">
+            <button
+              onClick={() => exec("formatBlock", "<h1>")}
+              style={toolBtn(activeStyles.h1)}
+              title="Heading 1"
+            >
               <Heading1 size={15} />
             </button>
-            <button onClick={() => exec("formatBlock", "<h2>")} style={toolBtnStyle} title="Heading 2">
+            <button
+              onClick={() => exec("formatBlock", "<h2>")}
+              style={toolBtn(activeStyles.h2)}
+              title="Heading 2"
+            >
               <Heading2 size={15} />
             </button>
-            <button onClick={() => exec("formatBlock", "<h3>")} style={toolBtnStyle} title="Heading 3">
+            <button
+              onClick={() => exec("formatBlock", "<h3>")}
+              style={toolBtn(activeStyles.h3)}
+              title="Heading 3"
+            >
               <Heading3 size={15} />
             </button>
-            <button onClick={() => exec("formatBlock", "<p>")} style={toolBtnStyle} title="Paragraph">
-              P
+            <button
+              onClick={() => exec("formatBlock", "<p>")}
+              style={toolBtn(activeStyles.p)}
+              title="Paragraph"
+            >
+              <span style={{ fontSize: "0.85rem", fontWeight: "700", padding: "0 2px" }}>P</span>
             </button>
           </div>
 
           {/* Lists & Quotes */}
           <div style={{ display: "flex", gap: "2px", borderRight: "1px solid #e2e8f0", paddingRight: "0.35rem" }}>
-            <button onClick={() => exec("insertUnorderedList")} style={toolBtnStyle} title="Bullet List">
+            <button
+              onClick={() => exec("insertUnorderedList")}
+              style={toolBtn(activeStyles.ul)}
+              title="Bullet List"
+            >
               <List size={15} />
             </button>
-            <button onClick={() => exec("insertOrderedList")} style={toolBtnStyle} title="Numbered List">
+            <button
+              onClick={() => exec("insertOrderedList")}
+              style={toolBtn(activeStyles.ol)}
+              title="Numbered List"
+            >
               <ListOrdered size={15} />
             </button>
-            <button onClick={() => exec("formatBlock", "<blockquote>")} style={toolBtnStyle} title="Quote Block">
+            <button
+              onClick={() => exec("formatBlock", "<blockquote>")}
+              style={toolBtn(activeStyles.quote)}
+              title="Quote Block"
+            >
               <Quote size={15} />
             </button>
-            <button onClick={() => exec("formatBlock", "<pre>")} style={toolBtnStyle} title="Code Block">
+            <button
+              onClick={() => exec("formatBlock", "<pre>")}
+              style={toolBtn(activeStyles.code)}
+              title="Code Block"
+            >
               <Code size={15} />
             </button>
           </div>
 
-          {/* Align */}
+          {/* Alignment */}
           <div style={{ display: "flex", gap: "2px", borderRight: "1px solid #e2e8f0", paddingRight: "0.35rem" }}>
-            <button onClick={() => exec("justifyLeft")} style={toolBtnStyle} title="Align Left">
+            <button
+              onClick={() => exec("justifyLeft")}
+              style={toolBtn(activeStyles.justifyLeft)}
+              title="Align Left"
+            >
               <AlignLeft size={15} />
             </button>
-            <button onClick={() => exec("justifyCenter")} style={toolBtnStyle} title="Align Center">
+            <button
+              onClick={() => exec("justifyCenter")}
+              style={toolBtn(activeStyles.justifyCenter)}
+              title="Align Center"
+            >
               <AlignCenter size={15} />
             </button>
-            <button onClick={() => exec("justifyRight")} style={toolBtnStyle} title="Align Right">
+            <button
+              onClick={() => exec("justifyRight")}
+              style={toolBtn(activeStyles.justifyRight)}
+              title="Align Right"
+            >
               <AlignRight size={15} />
             </button>
           </div>
@@ -167,10 +303,14 @@ export default function RichTextEditor({
                   backgroundColor: c, border: "1px solid #cbd5e1",
                   cursor: "pointer", padding: 0
                 }}
-                title="Highlight"
+                title="Highlight Color"
               />
             ))}
-            <button onClick={() => exec("removeFormat")} style={{ ...toolBtnStyle, marginLeft: "4px" }} title="Clear Formatting">
+            <button
+              onClick={() => exec("removeFormat")}
+              style={{ ...toolBtn(false), marginLeft: "4px" }}
+              title="Clear Formatting"
+            >
               <RemoveFormatting size={14} />
             </button>
           </div>
@@ -236,6 +376,7 @@ export default function RichTextEditor({
           onInput={handleInput}
           onKeyUp={sendCursorPosition}
           onMouseUp={sendCursorPosition}
+          onClick={sendCursorPosition}
           style={{
             flex: 1,
             outline: "none",
@@ -254,15 +395,17 @@ export default function RichTextEditor({
   );
 }
 
-const toolBtnStyle = {
+const toolBtn = (isActive) => ({
   padding: "0.35rem 0.45rem",
   borderRadius: "6px",
-  border: "none",
-  backgroundColor: "transparent",
-  color: "#475569",
+  border: isActive ? "1px solid #bfdbfe" : "1px solid transparent",
+  backgroundColor: isActive ? "#eff6ff" : "transparent",
+  color: isActive ? "#2563eb" : "#475569",
+  fontWeight: isActive ? "700" : "500",
   cursor: "pointer",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  transition: "all 0.15s"
-};
+  transition: "all 0.15s ease",
+  boxShadow: isActive ? "0 1px 2px rgba(37, 99, 235, 0.15)" : "none"
+});
