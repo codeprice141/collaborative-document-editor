@@ -11,12 +11,10 @@ import {
   ArrowLeft,
   Share2,
   History,
-  Wifi,
-  WifiOff,
   FileText,
   Palette,
   CheckCircle,
-  RefreshCw
+  FileEdit
 } from "lucide-react";
 
 export default function EditorPage() {
@@ -108,83 +106,89 @@ export default function EditorPage() {
 
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column", backgroundColor: "#f8fafc" }}>
-      {/* Top Glassmorphic Navigation Bar */}
+      {/* Clean Minimalist Navigation Top Bar */}
       <header style={{
-        backgroundColor: "rgba(255, 255, 255, 0.95)",
-        backdropFilter: "blur(10px)",
+        backgroundColor: "#ffffff",
         borderBottom: "1px solid #e2e8f0",
-        padding: "0.5rem 1.5rem",
+        padding: "0.6rem 1.5rem",
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
         zIndex: 30
       }}>
-        {/* Left: Back & Title */}
-        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-          <Link to="/dashboard" style={{ display: "flex", alignItems: "center", color: "#64748b", padding: "0.4rem", borderRadius: "8px" }} title="Back to Dashboard">
-            <ArrowLeft size={18} />
+        {/* Left: Back & Clean Editable Title */}
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          <Link
+            to="/dashboard"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#64748b",
+              padding: "0.4rem",
+              borderRadius: "8px",
+              textDecoration: "none"
+            }}
+            title="Back to Documents"
+          >
+            <ArrowLeft size={19} />
           </Link>
 
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <input
-                type="text"
-                value={title}
-                disabled={isReadOnly}
-                onChange={(e) => setTitle(e.target.value)}
-                onBlur={(e) => saveTitle(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && e.target.blur()}
-                placeholder="Untitled Document"
-                title="Click to rename document"
-                style={{
-                  fontSize: "1.05rem", fontWeight: "700", color: "#0f172a",
-                  border: "1px solid transparent", background: "transparent",
-                  outline: "none", width: "240px", padding: "2px 6px",
-                  borderRadius: "6px", transition: "border 0.15s"
-                }}
-                onFocus={(e) => e.target.style.borderColor = "#93c5fd"}
-              />
-              {titleSaved && (
-                <span style={{ display: "flex", alignItems: "center", gap: "0.2rem", fontSize: "0.75rem", color: "#16a34a", fontWeight: "600" }}>
-                  <CheckCircle size={13} /> Saved
-                </span>
-              )}
-            </div>
-
-            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.75rem", color: "#94a3b8", paddingLeft: "6px" }}>
-              <span style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
-                {connectionStatus === "connected" ? (
-                  <Wifi size={12} color="#10b981" />
-                ) : connectionStatus === "connecting" ? (
-                  <RefreshCw size={12} color="#f59e0b" className="animate-spin" />
-                ) : (
-                  <WifiOff size={12} color="#ef4444" />
-                )}
-                <span style={{ color: connectionStatus === "connected" ? "#10b981" : connectionStatus === "connecting" ? "#f59e0b" : "#ef4444", fontWeight: "600" }}>
-                  {connectionStatus === "connected" ? "Live Synced" : connectionStatus === "connecting" ? "Connecting..." : "Disconnected"}
-                </span>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+            <FileEdit size={17} color="#2563eb" />
+            <input
+              type="text"
+              value={title}
+              disabled={isReadOnly}
+              onChange={(e) => setTitle(e.target.value)}
+              onBlur={(e) => saveTitle(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && e.target.blur()}
+              placeholder="Untitled Document"
+              title="Click to rename"
+              style={{
+                fontSize: "1.05rem",
+                fontWeight: "700",
+                color: "#0f172a",
+                border: "1px solid transparent",
+                background: "transparent",
+                outline: "none",
+                width: "240px",
+                padding: "3px 6px",
+                borderRadius: "6px",
+                transition: "border 0.15s"
+              }}
+              onFocus={(e) => e.target.style.borderColor = "#93c5fd"}
+            />
+            {titleSaved && (
+              <span style={{ display: "flex", alignItems: "center", gap: "0.2rem", fontSize: "0.75rem", color: "#16a34a", fontWeight: "600" }}>
+                <CheckCircle size={13} /> Saved
               </span>
-              <span>•</span>
-              <span>v{version}</span>
-              <span>•</span>
-              <span style={{ textTransform: "capitalize", fontWeight: "600", color: "#64748b" }}>{userRole}</span>
-            </div>
+            )}
           </div>
         </div>
 
         {/* Center: Mode Switcher Tabs */}
         <div style={{
-          display: "flex", backgroundColor: "#f1f5f9",
-          padding: "0.25rem", borderRadius: "10px", border: "1px solid #e2e8f0"
+          display: "flex",
+          backgroundColor: "#f1f5f9",
+          padding: "0.25rem",
+          borderRadius: "10px",
+          border: "1px solid #e2e8f0"
         }}>
           <button
             onClick={() => setActiveTab("text")}
             style={{
-              display: "flex", alignItems: "center", gap: "0.4rem",
-              padding: "0.4rem 1rem", borderRadius: "8px", border: "none",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.4rem",
+              padding: "0.35rem 0.9rem",
+              borderRadius: "8px",
+              border: "none",
               backgroundColor: activeTab === "text" ? "#ffffff" : "transparent",
               color: activeTab === "text" ? "#2563eb" : "#64748b",
-              fontWeight: "600", fontSize: "0.875rem", cursor: "pointer",
+              fontWeight: "600",
+              fontSize: "0.875rem",
+              cursor: "pointer",
               boxShadow: activeTab === "text" ? "0 1px 3px rgba(0,0,0,0.08)" : "none"
             }}
           >
@@ -194,11 +198,17 @@ export default function EditorPage() {
           <button
             onClick={() => setActiveTab("canvas")}
             style={{
-              display: "flex", alignItems: "center", gap: "0.4rem",
-              padding: "0.4rem 1rem", borderRadius: "8px", border: "none",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.4rem",
+              padding: "0.35rem 0.9rem",
+              borderRadius: "8px",
+              border: "none",
               backgroundColor: activeTab === "canvas" ? "#ffffff" : "transparent",
               color: activeTab === "canvas" ? "#2563eb" : "#64748b",
-              fontWeight: "600", fontSize: "0.875rem", cursor: "pointer",
+              fontWeight: "600",
+              fontSize: "0.875rem",
+              cursor: "pointer",
               boxShadow: activeTab === "canvas" ? "0 1px 3px rgba(0,0,0,0.08)" : "none"
             }}
           >
@@ -208,14 +218,20 @@ export default function EditorPage() {
         </div>
 
         {/* Right: Actions */}
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
           <button
             onClick={() => setShowHistory(true)}
             style={{
-              display: "flex", alignItems: "center", gap: "0.35rem",
-              padding: "0.45rem 0.85rem", borderRadius: "8px",
-              border: "1px solid #cbd5e1", backgroundColor: "#ffffff",
-              fontSize: "0.875rem", cursor: "pointer", color: "#475569",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.35rem",
+              padding: "0.45rem 0.85rem",
+              borderRadius: "8px",
+              border: "1px solid #cbd5e1",
+              backgroundColor: "#ffffff",
+              fontSize: "0.875rem",
+              cursor: "pointer",
+              color: "#475569",
               fontWeight: "500"
             }}
           >
@@ -227,10 +243,17 @@ export default function EditorPage() {
             <button
               onClick={() => setShowShare(true)}
               style={{
-                display: "flex", alignItems: "center", gap: "0.35rem",
-                padding: "0.45rem 0.95rem", borderRadius: "8px",
-                border: "none", backgroundColor: "#2563eb", color: "#ffffff",
-                fontSize: "0.875rem", fontWeight: "600", cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.35rem",
+                padding: "0.45rem 0.95rem",
+                borderRadius: "8px",
+                border: "none",
+                backgroundColor: "#2563eb",
+                color: "#ffffff",
+                fontSize: "0.875rem",
+                fontWeight: "600",
+                cursor: "pointer",
                 boxShadow: "0 2px 4px rgba(37, 99, 235, 0.2)"
               }}
             >
@@ -241,10 +264,16 @@ export default function EditorPage() {
         </div>
       </header>
 
-      {/* Main Workspace Area */}
+      {/* Main Workspace with Infinite Scroll Area */}
       <main style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", position: "relative" }}>
         {activeTab === "text" ? (
-          <div style={{ flex: 1, overflowY: "auto", padding: "1.5rem 2rem", display: "flex", justifyContent: "center" }}>
+          <div style={{
+            flex: 1,
+            overflowY: "auto",
+            padding: "2rem 1.5rem",
+            display: "flex",
+            justifyContent: "center"
+          }}>
             <RichTextEditor
               htmlContent={content}
               onHtmlChange={handleHtmlChange}
@@ -264,7 +293,7 @@ export default function EditorPage() {
           />
         )}
 
-        {/* Bottom-Right Floating Collaborator Dock */}
+        {/* Bottom-Right Floating Collaborator Presence Dock */}
         <CollaboratorDock
           activeUsers={activeUsers}
           allCollaborators={allCollaborators}

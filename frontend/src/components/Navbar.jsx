@@ -1,7 +1,7 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { FileText, LogOut, User as UserIcon } from "lucide-react";
+import { Layers, LogOut } from "lucide-react";
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -14,25 +14,74 @@ export default function Navbar() {
 
   return (
     <header style={{
-      backgroundColor: "#ffffff",
+      backgroundColor: "rgba(255, 255, 255, 0.95)",
+      backdropFilter: "blur(10px)",
       borderBottom: "1px solid #e2e8f0",
-      padding: "0.75rem 1.5rem",
+      padding: "0.75rem 2rem",
       display: "flex",
       justifyContent: "space-between",
       alignItems: "center"
     }}>
-      <Link to="/dashboard" style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: "700", fontSize: "1.125rem", color: "#2563eb" }}>
-        <FileText size={24} />
-        <span>DocCraft Realtime</span>
+      {/* Brand Logo & Name (No Underline!) */}
+      <Link
+        to="/dashboard"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "0.6rem",
+          textDecoration: "none",
+          color: "#0f172a"
+        }}
+      >
+        <div style={{
+          width: "34px",
+          height: "34px",
+          borderRadius: "10px",
+          backgroundColor: "#2563eb",
+          color: "#ffffff",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          boxShadow: "0 4px 10px -2px rgba(37, 99, 235, 0.3)"
+        }}>
+          <Layers size={18} />
+        </div>
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          <span style={{ fontWeight: "800", fontSize: "1.05rem", letterSpacing: "-0.02em", color: "#0f172a" }}>
+            CollabEditor
+          </span>
+        </div>
       </Link>
 
+      {/* User Profile & Logout */}
       {user && (
-        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.875rem", color: "#475569" }}>
-            <div style={{ width: "32px", height: "32px", borderRadius: "50%", backgroundColor: "#e0e7ff", color: "#4338ca", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "600" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.85rem" }}>
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+            padding: "0.3rem 0.65rem",
+            borderRadius: "9999px",
+            backgroundColor: "#f8fafc",
+            border: "1px solid #e2e8f0"
+          }}>
+            <div style={{
+              width: "26px",
+              height: "26px",
+              borderRadius: "50%",
+              backgroundColor: "#3b82f6",
+              color: "#ffffff",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontWeight: "700",
+              fontSize: "0.75rem"
+            }}>
               {user.full_name.charAt(0).toUpperCase()}
             </div>
-            <span>{user.full_name}</span>
+            <span style={{ fontSize: "0.8125rem", fontWeight: "600", color: "#334155" }}>
+              {user.full_name}
+            </span>
           </div>
 
           <button
@@ -42,16 +91,27 @@ export default function Navbar() {
               alignItems: "center",
               gap: "0.35rem",
               padding: "0.4rem 0.75rem",
-              borderRadius: "6px",
-              border: "1px solid #cbd5e1",
+              borderRadius: "8px",
+              border: "1px solid #e2e8f0",
               backgroundColor: "#ffffff",
               color: "#64748b",
-              fontSize: "0.875rem",
+              fontSize: "0.8125rem",
+              fontWeight: "500",
               cursor: "pointer",
-              transition: "all 0.2s"
+              transition: "all 0.15s"
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "#fee2e2";
+              e.currentTarget.style.color = "#dc2626";
+              e.currentTarget.style.borderColor = "#fca5a5";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "#ffffff";
+              e.currentTarget.style.color = "#64748b";
+              e.currentTarget.style.borderColor = "#e2e8f0";
             }}
           >
-            <LogOut size={16} />
+            <LogOut size={15} />
             <span>Logout</span>
           </button>
         </div>
