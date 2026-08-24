@@ -1,4 +1,6 @@
 import React, { useRef, useState, useEffect } from "react";
+import ConfirmModal from "./ConfirmModal";
+import PromptModal from "./PromptModal";
 import {
   Pen,
   Highlighter,
@@ -37,12 +39,16 @@ export default function WhiteboardCanvas({
   const [elements, setElements] = useState([]);
   const [history, setHistory] = useState([]);
   const [redoStack, setRedoStack] = useState([]);
-  const [tool, setTool] = useState("pen"); // 'pen' | 'highlighter' | 'rect' | 'circle' | 'arrow' | 'line' | 'text' | 'eraser'
+  const [tool, setTool] = useState("pen");
   const [color, setColor] = useState("#2563eb");
   const [strokeWidth, setStrokeWidth] = useState(3);
   const [isFilled, setIsFilled] = useState(false);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentShape, setCurrentShape] = useState(null);
+
+  // Custom Modals State
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [textPromptData, setTextPromptData] = useState(null); // { x, y }
 
   // Load persistent elements on startup
   useEffect(() => {
@@ -87,7 +93,6 @@ export default function WhiteboardCanvas({
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
 
-    // Clear and render all elements
     ctx.clearRect(0, 0, rect.width, rect.height);
 
     const allToRender = currentShape ? [...elements, currentShape] : elements;
@@ -142,13 +147,11 @@ export default function WhiteboardCanvas({
         ctx.lineTo(el.x2, el.y2);
         ctx.stroke();
       } else if (el.tool === "arrow") {
-        // Draw line
         ctx.beginPath();
         ctx.moveTo(el.x1, el.y1);
         ctx.lineTo(el.x2, el.y2);
         ctx.stroke();
 
-        // Draw arrow head
         const angle = Math.atan2(el.y2 - el.y1, el.x2 - el.x1);
         const headlen = 12;
         ctx.beginPath();
@@ -178,6 +181,12 @@ export default function WhiteboardCanvas({
   const handleMouseDown = (e) => {
     if (isReadOnly) return;
     const coords = getCanvasCoords(e);
+
+    if (tool === "text") {
+      setTextPromptData(coords);
+      return;
+    }
+
     setIsDrawing(true);
 
     if (tool === "pen" || tool === "highlighter") {
@@ -188,23 +197,7 @@ export default function WhiteboardCanvas({
         strokeWidth,
         points: [coords],
       });
-    } else if (tool === "text") {
-      const text = prompt("Enter text note:");
-      if (text) {
-        const newEl = {
-          id: "elem_" + Date.now(),
-          tool: "text",
-          text,
-          color,
-          strokeWidth,
-          x1: coords.x,
-          y1: coords.y,
-        };
-        commitNewElement(newEl);
-      }
-      setIsDrawing(false);
     } else if (tool === "eraser") {
-      // Find and remove elements near click
       setElements((prev) =>
         prev.filter((el) => {
           if (el.points) {
@@ -214,7 +207,6 @@ export default function WhiteboardCanvas({
         })
       );
     } else {
-      // Shapes (rect, circle, arrow, line)
       setCurrentShape({
         id: "elem_" + Date.now(),
         tool,
@@ -260,13 +252,28 @@ export default function WhiteboardCanvas({
     setRedoStack([]);
     setElements(updated);
 
-    // Broadcast to room peers and persist to DB
     if (onSendDraw) {
       onSendDraw({ elements: updated, stroke: el });
     }
     if (onSaveData) {
       onSaveData(JSON.stringify(updated));
     }
+  };
+
+  const handleAddTextPrompt = (text) => {
+    if (textPromptData && text) {
+      const newEl = {
+        id: "elem_" + Date.now(),
+        tool: "text",
+        text,
+        color,
+        strokeWidth,
+        x1: textPromptData.x,
+        y1: textPromptData.y,
+      };
+      commitNewElement(newEl);
+    }
+    setTextPromptData(null);
   };
 
   const undo = () => {
@@ -291,10 +298,10 @@ export default function WhiteboardCanvas({
     if (onSaveData) onSaveData(JSON.stringify(next));
   };
 
-  const clearBoard = () => {
-    if (isReadOnly || !confirm("Clear the entire whiteboard?")) return;
+  const handleConfirmClearBoard = () => {
     setHistory((prev) => [...prev, elements]);
     setElements([]);
+    setShowClearConfirm(false);
     if (onSendDraw) onSendDraw({ elements: [] });
     if (onSaveData) onSaveData("[]");
   };
@@ -310,7 +317,7 @@ export default function WhiteboardCanvas({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
-      {/* Excalidraw-Style Floating Toolbar */}
+      {/* Floating Toolbar */}
       <div style={{
         position: "absolute", top: "16px", left: "50%", transform: "translateX(-50%)",
         backgroundColor: "rgba(255, 255, 255, 0.95)",
@@ -375,7 +382,7 @@ export default function WhiteboardCanvas({
           </button>
         </div>
 
-        {/* Stroke Width Slider */}
+        {/* Stroke Width */}
         <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", borderRight: "1px solid #e2e8f0", paddingRight: "0.5rem" }}>
           <input
             type="range"
@@ -388,7 +395,7 @@ export default function WhiteboardCanvas({
           />
         </div>
 
-        {/* Undo / Redo / Export */}
+        {/* Actions */}
         <div style={{ display: "flex", gap: "2px" }}>
           <button onClick={undo} disabled={history.length === 0} style={toolBtn(false)} title="Undo (Ctrl+Z)">
             <Undo2 size={16} />
@@ -396,7 +403,7 @@ export default function WhiteboardCanvas({
           <button onClick={redo} disabled={redoStack.length === 0} style={toolBtn(false)} title="Redo (Ctrl+Y)">
             <Redo2 size={16} />
           </button>
-          <button onClick={clearBoard} style={toolBtn(false)} title="Clear Whiteboard">
+          <button onClick={() => setShowClearConfirm(true)} style={toolBtn(false)} title="Clear Whiteboard">
             <RotateCcw size={16} />
           </button>
           <button onClick={downloadPNG} style={toolBtn(false)} title="Download PNG">
@@ -407,7 +414,7 @@ export default function WhiteboardCanvas({
 
       {/* Canvas Area */}
       <div style={{
-        flex: 1, backgroundColor: "#ffffff", borderRadius: "12px",
+        flex: 1, backgroundColor: "#ffffff", borderRadius: "14px",
         border: "1px solid #e2e8f0", overflow: "hidden", margin: "1rem",
         boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)"
       }}>
@@ -417,9 +424,30 @@ export default function WhiteboardCanvas({
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
-          style={{ width: "100%", height: "100%", cursor: tool === "eraser" ? "cell" : "crosshair", display: "block" }}
+          style={{ width: "100%", height: "100%", cursor: tool === "eraser" ? "cell" : tool === "text" ? "text" : "crosshair", display: "block" }}
         />
       </div>
+
+      {/* Custom Clear Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showClearConfirm}
+        title="Clear Entire Whiteboard?"
+        message="This will wipe all shapes, notes, and strokes from this whiteboard for all collaborators."
+        confirmText="Clear Whiteboard"
+        type="danger"
+        onConfirm={handleConfirmClearBoard}
+        onCancel={() => setShowClearConfirm(false)}
+      />
+
+      {/* Custom Text Prompt Modal */}
+      <PromptModal
+        isOpen={!!textPromptData}
+        title="Add Text Note"
+        placeholder="Type text note for whiteboard..."
+        confirmText="Add Note"
+        onConfirm={handleAddTextPrompt}
+        onCancel={() => setTextPromptData(null)}
+      />
     </div>
   );
 }

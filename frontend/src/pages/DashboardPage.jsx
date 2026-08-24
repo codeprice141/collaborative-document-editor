@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../services/api";
 import Navbar from "../components/Navbar";
+import ConfirmModal from "../components/ConfirmModal";
 import {
   Plus,
   FileText,
@@ -22,6 +23,11 @@ export default function DashboardPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [creating, setCreating] = useState(false);
+
+  // Custom Delete Confirm Modal State
+  const [docToDelete, setDocToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+
   const navigate = useNavigate();
 
   const loadDocs = async () => {
@@ -50,22 +56,29 @@ export default function DashboardPage() {
       setNewTitle("");
       navigate(`/documents/${newDoc.id}`);
     } catch (err) {
-      alert("Failed to create document: " + err.message);
+      console.error("Failed to create document", err);
     } finally {
       setCreating(false);
     }
   };
 
-  const handleDelete = async (e, docId) => {
+  const handleOpenDelete = (e, doc) => {
     e.preventDefault();
     e.stopPropagation();
-    if (confirm("Are you sure you want to delete this document?")) {
-      try {
-        await api.deleteDocument(docId);
-        loadDocs();
-      } catch (err) {
-        alert(err.message);
-      }
+    setDocToDelete(doc);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!docToDelete) return;
+    setDeleting(true);
+    try {
+      await api.deleteDocument(docToDelete.id);
+      setDocToDelete(null);
+      loadDocs();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -242,7 +255,7 @@ export default function DashboardPage() {
 
                   {doc.user_role === "owner" && (
                     <button
-                      onClick={(e) => handleDelete(e, doc.id)}
+                      onClick={(e) => handleOpenDelete(e, doc)}
                       style={{
                         border: "none",
                         background: "none",
@@ -331,6 +344,18 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      {/* Custom Modern Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!docToDelete}
+        title={`Delete "${docToDelete?.title || 'Document'}"?`}
+        message="Are you sure you want to delete this document? All team collaborators will lose access."
+        confirmText="Delete Document"
+        type="danger"
+        loading={deleting}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDocToDelete(null)}
+      />
     </div>
   );
 }
