@@ -8,6 +8,20 @@ function getAuthHeaders() {
   };
 }
 
+async function handleResponse(res, defaultErrorMsg = "Request failed") {
+  let data = null;
+  const text = await res.text();
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = { detail: text || defaultErrorMsg };
+  }
+  if (!res.ok) {
+    throw new Error(data.detail || defaultErrorMsg);
+  }
+  return data;
+}
+
 export const api = {
   async register(email, password, full_name) {
     const res = await fetch(`${API_BASE}/auth/register`, {
@@ -15,9 +29,7 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password, full_name }),
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Registration failed");
-    return data;
+    return handleResponse(res, "Registration failed");
   },
 
   async login(email, password) {
@@ -26,25 +38,21 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Login failed");
-    return data;
+    return handleResponse(res, "Login failed");
   },
 
   async getMe() {
     const res = await fetch(`${API_BASE}/auth/me`, {
       headers: getAuthHeaders(),
     });
-    if (!res.ok) throw new Error("Unauthorized");
-    return res.json();
+    return handleResponse(res, "Unauthorized");
   },
 
   async getDocuments() {
     const res = await fetch(`${API_BASE}/documents/`, {
       headers: getAuthHeaders(),
     });
-    if (!res.ok) throw new Error("Failed to load documents");
-    return res.json();
+    return handleResponse(res, "Failed to load documents");
   },
 
   async createDocument(title, content = "") {
@@ -53,18 +61,14 @@ export const api = {
       headers: getAuthHeaders(),
       body: JSON.stringify({ title, content }),
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Failed to create document");
-    return data;
+    return handleResponse(res, "Failed to create document");
   },
 
   async getDocument(docId) {
     const res = await fetch(`${API_BASE}/documents/${docId}`, {
       headers: getAuthHeaders(),
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Failed to load document");
-    return data;
+    return handleResponse(res, "Failed to load document");
   },
 
   async updateDocument(docId, updateData) {
@@ -73,9 +77,7 @@ export const api = {
       headers: getAuthHeaders(),
       body: JSON.stringify(updateData),
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Failed to update document");
-    return data;
+    return handleResponse(res, "Failed to update document");
   },
 
   async deleteDocument(docId) {
@@ -83,7 +85,9 @@ export const api = {
       method: "DELETE",
       headers: getAuthHeaders(),
     });
-    if (!res.ok && res.status !== 204) throw new Error("Failed to delete document");
+    if (!res.ok && res.status !== 204) {
+      return handleResponse(res, "Failed to delete document");
+    }
     return true;
   },
 
@@ -93,9 +97,7 @@ export const api = {
       headers: getAuthHeaders(),
       body: JSON.stringify({ email, role }),
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Failed to share document");
-    return data;
+    return handleResponse(res, "Failed to share document");
   },
 
   async removeCollaborator(docId, userId) {
@@ -103,7 +105,9 @@ export const api = {
       method: "DELETE",
       headers: getAuthHeaders(),
     });
-    if (!res.ok && res.status !== 204) throw new Error("Failed to remove collaborator");
+    if (!res.ok && res.status !== 204) {
+      return handleResponse(res, "Failed to remove collaborator");
+    }
     return true;
   },
 
@@ -113,17 +117,14 @@ export const api = {
       headers: getAuthHeaders(),
       body: JSON.stringify({ comment }),
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Failed to create snapshot");
-    return data;
+    return handleResponse(res, "Failed to create snapshot");
   },
 
   async getRevisions(docId) {
     const res = await fetch(`${API_BASE}/documents/${docId}/revisions`, {
       headers: getAuthHeaders(),
     });
-    if (!res.ok) throw new Error("Failed to fetch revisions");
-    return res.json();
+    return handleResponse(res, "Failed to fetch revisions");
   },
 
   async rollbackSnapshot(docId, snapshotId) {
@@ -131,8 +132,6 @@ export const api = {
       method: "POST",
       headers: getAuthHeaders(),
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Failed to restore version");
-    return data;
+    return handleResponse(res, "Failed to restore version");
   },
 };

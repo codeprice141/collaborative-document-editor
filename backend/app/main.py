@@ -41,15 +41,14 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Set up CORS middleware
-if settings.CORS_ORIGINS:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"], allow_credentials=True,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+# Set up CORS middleware to allow localhost and any ngrok tunnel
+app.add_middleware(
+    CORSMiddleware,
+    allow_origin_regex=r"^https?://.*",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Top-level direct GET /health endpoint for probes / monitoring
 app.add_api_route("/health", health_check, methods=["GET"], tags=["health"], summary="Root Health Check")
