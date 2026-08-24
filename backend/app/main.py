@@ -4,6 +4,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
+from app.core.database import Base, engine
+from app.core.redis import close_redis_client
 from app.api.v1.router import api_router
 from app.api.v1.health import health_check
 
@@ -17,10 +19,17 @@ logger = logging.getLogger("collaborative_editor")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Lifespan context manager for application startup and shutdown events."""
-    logger.info("Starting up %s (version %s, env %s)", settings.PROJECT_NAME, settings.VERSION, settings.ENVIRONMENT)
+    """Lifespan context manager for database table creation and startup/shutdown."""
+    logger.info("Initializing database tables for %s...", settings.PROJECT_NAME)
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception as exc:
+        logger.warning("Could not auto-create tables on startup (DB might be offline): %s", exc)
+
+    logger.info("Application %s started (version %s, env %s)", settings.PROJECT_NAME, settings.VERSION, settings.ENVIRONMENT)
     yield
-    logger.info("Shutting down %s", settings.PROJECT_NAME)
+    logger.info("Shutting down %s...", settings.PROJECT_NAME)
+    await close_redis_client()
 
 
 app = FastAPI(
@@ -42,7 +51,7 @@ if settings.CORS_ORIGINS:
         allow_headers=["*"],
     )
 
-# Top-level direct GET /health endpoint for container probes / load balancers
+# Top-level direct GET /health endpoint for probes / monitoring
 app.add_api_route("/health", health_check, methods=["GET"], tags=["health"], summary="Root Health Check")
 
 # Include versioned API routes

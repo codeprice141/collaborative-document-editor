@@ -1,4 +1,5 @@
 import pytest
+import os
 from typing import Generator
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -6,8 +7,8 @@ from sqlalchemy.orm import sessionmaker
 from app.main import app
 from app.core.database import Base, get_db
 
-# Use in-memory SQLite database for isolated test runs
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test_temp.db"
+# Use test sqlite database
+SQLALCHEMY_DATABASE_URL = "sqlite:///./test_suite.db"
 
 test_engine = create_engine(
     SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
@@ -17,21 +18,20 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_test_db():
-    """Create all tables before test session and tear down after."""
+    """Create all tables before test session and drop after."""
     Base.metadata.create_all(bind=test_engine)
     yield
     Base.metadata.drop_all(bind=test_engine)
-    import os
-    if os.path.exists("./test_temp.db"):
+    if os.path.exists("./test_suite.db"):
         try:
-            os.remove("./test_temp.db")
+            os.remove("./test_suite.db")
         except OSError:
             pass
 
 
 @pytest.fixture(scope="function")
 def db_session() -> Generator:
-    """Yield a transactional database session for tests."""
+    """Yield a transactional database session for each test."""
     db = TestingSessionLocal()
     try:
         yield db

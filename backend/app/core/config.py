@@ -1,6 +1,6 @@
 import json
 from typing import List, Union
-from pydantic import AnyHttpUrl, field_validator
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -18,6 +18,11 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     LOG_LEVEL: str = "INFO"
     API_V1_STR: str = "/api/v1"
+
+    # Security & JWT
+    SECRET_KEY: str = "supersecretjwtkeyforcollaborativedocumenteditor_changeinproduction"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
 
     # CORS configuration
     CORS_ORIGINS: List[str] = [
@@ -46,6 +51,10 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str = "postgres"
     POSTGRES_DB: str = "collaborative_editor"
     DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/collaborative_editor"
+
+    # Redis Connection & Feature Flag
+    REDIS_URL: str = "redis://localhost:6379/0"
+    USE_REDIS_PUBSUB: bool = False
 
 
 settings = Settings()
