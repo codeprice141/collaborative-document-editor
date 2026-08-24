@@ -66,7 +66,6 @@ export default function RichTextEditor({
       const isCenter = document.queryCommandState("justifyCenter");
       const isRight = document.queryCommandState("justifyRight");
 
-      // Check current block tag
       const selection = window.getSelection();
       let currentBlock = "";
       if (selection && selection.rangeCount > 0) {
@@ -80,7 +79,6 @@ export default function RichTextEditor({
           node = node.parentNode;
         }
 
-        // Check text selection for floating comment button
         const text = selection.toString().trim();
         if (text.length > 0) {
           const range = selection.getRangeAt(0);
@@ -126,7 +124,6 @@ export default function RichTextEditor({
     };
   }, [isReadOnly]);
 
-  // Sync incoming HTML without resetting cursor during local typing
   useEffect(() => {
     if (editorRef.current && !isInternalUpdate.current) {
       if (editorRef.current.innerHTML !== htmlContent) {
@@ -182,9 +179,9 @@ export default function RichTextEditor({
       display: "flex",
       flexDirection: "column",
       width: "100%",
-      maxWidth: "880px",
+      maxWidth: "860px",
       alignItems: "center",
-      paddingBottom: "30vh",
+      paddingBottom: "25vh",
       position: "relative"
     }}>
       {/* Floating Mini Action for Selected Text */}
@@ -225,206 +222,144 @@ export default function RichTextEditor({
         </div>
       )}
 
-      {/* Sticky Rich Formatting Toolbar */}
+      {/* Sticky Responsive Rich Toolbar */}
       {!isReadOnly && (
         <div style={{
           position: "sticky",
-          top: "12px",
+          top: "8px",
           zIndex: 20,
-          backgroundColor: "rgba(255, 255, 255, 0.95)",
+          backgroundColor: "var(--bg-surface-glass)",
           backdropFilter: "blur(12px)",
-          border: "1px solid #e2e8f0",
+          border: "1px solid var(--border-color)",
           borderRadius: "12px",
-          padding: "0.35rem 0.5rem",
+          padding: "0.3rem 0.4rem",
           display: "flex",
           alignItems: "center",
-          gap: "0.25rem",
-          boxShadow: "0 10px 25px -5px rgba(0,0,0,0.08), 0 4px 6px -2px rgba(0,0,0,0.03)",
-          marginBottom: "1.5rem",
-          flexWrap: "wrap"
+          gap: "0.2rem",
+          boxShadow: "0 10px 25px -5px rgba(0,0,0,0.08)",
+          marginBottom: "1.25rem",
+          maxWidth: "100%",
+          overflowX: "auto",
+          WebkitOverflowScrolling: "touch"
         }}>
           {/* Text Styles */}
-          <div style={{ display: "flex", gap: "2px", borderRight: "1px solid #e2e8f0", paddingRight: "0.35rem" }}>
-            <button
-              onClick={() => exec("bold")}
-              style={toolBtn(activeStyles.bold)}
-              title="Bold (Ctrl+B)"
-            >
+          <div style={{ display: "flex", gap: "2px", borderRight: "1px solid var(--border-color)", paddingRight: "0.3rem", flexShrink: 0 }}>
+            <button onClick={() => exec("bold")} style={toolBtn(activeStyles.bold)} title="Bold">
               <Bold size={15} />
             </button>
-            <button
-              onClick={() => exec("italic")}
-              style={toolBtn(activeStyles.italic)}
-              title="Italic (Ctrl+I)"
-            >
+            <button onClick={() => exec("italic")} style={toolBtn(activeStyles.italic)} title="Italic">
               <Italic size={15} />
             </button>
-            <button
-              onClick={() => exec("underline")}
-              style={toolBtn(activeStyles.underline)}
-              title="Underline (Ctrl+U)"
-            >
+            <button onClick={() => exec("underline")} style={toolBtn(activeStyles.underline)} title="Underline">
               <Underline size={15} />
             </button>
-            <button
-              onClick={() => exec("strikeThrough")}
-              style={toolBtn(activeStyles.strikeThrough)}
-              title="Strikethrough"
-            >
+            <button onClick={() => exec("strikeThrough")} style={toolBtn(activeStyles.strikeThrough)} title="Strikethrough">
               <Strikethrough size={15} />
             </button>
           </div>
 
           {/* Headings */}
-          <div style={{ display: "flex", gap: "2px", borderRight: "1px solid #e2e8f0", paddingRight: "0.35rem" }}>
-            <button
-              onClick={() => exec("formatBlock", "<h1>")}
-              style={toolBtn(activeStyles.h1)}
-              title="Heading 1"
-            >
+          <div style={{ display: "flex", gap: "2px", borderRight: "1px solid var(--border-color)", paddingRight: "0.3rem", flexShrink: 0 }}>
+            <button onClick={() => exec("formatBlock", "<h1>")} style={toolBtn(activeStyles.h1)} title="Heading 1">
               <Heading1 size={15} />
             </button>
-            <button
-              onClick={() => exec("formatBlock", "<h2>")}
-              style={toolBtn(activeStyles.h2)}
-              title="Heading 2"
-            >
+            <button onClick={() => exec("formatBlock", "<h2>")} style={toolBtn(activeStyles.h2)} title="Heading 2">
               <Heading2 size={15} />
             </button>
-            <button
-              onClick={() => exec("formatBlock", "<h3>")}
-              style={toolBtn(activeStyles.h3)}
-              title="Heading 3"
-            >
+            <button onClick={() => exec("formatBlock", "<h3>")} style={toolBtn(activeStyles.h3)} title="Heading 3">
               <Heading3 size={15} />
             </button>
-            <button
-              onClick={() => exec("formatBlock", "<p>")}
-              style={toolBtn(activeStyles.p)}
-              title="Paragraph"
-            >
-              <span style={{ fontSize: "0.85rem", fontWeight: "700", padding: "0 2px" }}>P</span>
+            <button onClick={() => exec("formatBlock", "<p>")} style={toolBtn(activeStyles.p)} title="Paragraph">
+              <span style={{ fontSize: "0.8125rem", fontWeight: "700", padding: "0 2px" }}>P</span>
             </button>
           </div>
 
           {/* Lists & Quotes */}
-          <div style={{ display: "flex", gap: "2px", borderRight: "1px solid #e2e8f0", paddingRight: "0.35rem" }}>
-            <button
-              onClick={() => exec("insertUnorderedList")}
-              style={toolBtn(activeStyles.ul)}
-              title="Bullet List"
-            >
+          <div style={{ display: "flex", gap: "2px", borderRight: "1px solid var(--border-color)", paddingRight: "0.3rem", flexShrink: 0 }}>
+            <button onClick={() => exec("insertUnorderedList")} style={toolBtn(activeStyles.ul)} title="Bullet List">
               <List size={15} />
             </button>
-            <button
-              onClick={() => exec("insertOrderedList")}
-              style={toolBtn(activeStyles.ol)}
-              title="Numbered List"
-            >
+            <button onClick={() => exec("insertOrderedList")} style={toolBtn(activeStyles.ol)} title="Numbered List">
               <ListOrdered size={15} />
             </button>
-            <button
-              onClick={() => exec("formatBlock", "<blockquote>")}
-              style={toolBtn(activeStyles.quote)}
-              title="Quote Block"
-            >
+            <button onClick={() => exec("formatBlock", "<blockquote>")} style={toolBtn(activeStyles.quote)} title="Quote Block">
               <Quote size={15} />
             </button>
-            <button
-              onClick={() => exec("formatBlock", "<pre>")}
-              style={toolBtn(activeStyles.code)}
-              title="Code Block"
-            >
+            <button onClick={() => exec("formatBlock", "<pre>")} style={toolBtn(activeStyles.code)} title="Code Block">
               <Code size={15} />
             </button>
           </div>
 
           {/* Alignment */}
-          <div style={{ display: "flex", gap: "2px", borderRight: "1px solid #e2e8f0", paddingRight: "0.35rem" }}>
-            <button
-              onClick={() => exec("justifyLeft")}
-              style={toolBtn(activeStyles.justifyLeft)}
-              title="Align Left"
-            >
+          <div style={{ display: "flex", gap: "2px", borderRight: "1px solid var(--border-color)", paddingRight: "0.3rem", flexShrink: 0 }}>
+            <button onClick={() => exec("justifyLeft")} style={toolBtn(activeStyles.justifyLeft)} title="Align Left">
               <AlignLeft size={15} />
             </button>
-            <button
-              onClick={() => exec("justifyCenter")}
-              style={toolBtn(activeStyles.justifyCenter)}
-              title="Align Center"
-            >
+            <button onClick={() => exec("justifyCenter")} style={toolBtn(activeStyles.justifyCenter)} title="Align Center">
               <AlignCenter size={15} />
             </button>
-            <button
-              onClick={() => exec("justifyRight")}
-              style={toolBtn(activeStyles.justifyRight)}
-              title="Align Right"
-            >
+            <button onClick={() => exec("justifyRight")} style={toolBtn(activeStyles.justifyRight)} title="Align Right">
               <AlignRight size={15} />
             </button>
           </div>
 
           {/* Highlights */}
-          <div style={{ display: "flex", alignItems: "center", gap: "4px", paddingLeft: "0.2rem" }}>
-            <Highlighter size={13} color="#64748b" />
+          <div style={{ display: "flex", alignItems: "center", gap: "3px", paddingLeft: "0.2rem", flexShrink: 0 }}>
+            <Highlighter size={13} color="var(--text-secondary)" />
             {HIGHLIGHT_COLORS.map((c) => (
               <button
                 key={c}
                 onClick={() => exec("hiliteColor", c)}
                 style={{
-                  width: "15px", height: "15px", borderRadius: "50%",
-                  backgroundColor: c, border: "1px solid #cbd5e1",
+                  width: "14px", height: "14px", borderRadius: "50%",
+                  backgroundColor: c, border: "1px solid var(--border-color)",
                   cursor: "pointer", padding: 0
                 }}
                 title="Highlight Color"
               />
             ))}
-            <button
-              onClick={() => exec("removeFormat")}
-              style={{ ...toolBtn(false), marginLeft: "4px" }}
-              title="Clear Formatting"
-            >
+            <button onClick={() => exec("removeFormat")} style={{ ...toolBtn(false), marginLeft: "2px" }} title="Clear Formatting">
               <RemoveFormatting size={14} />
             </button>
           </div>
         </div>
       )}
 
-      {/* Infinite Expanding Document Surface */}
+      {/* Infinite Responsive Document Page */}
       <div style={{
         width: "100%",
-        minHeight: "calc(100vh - 200px)",
+        minHeight: "calc(100vh - 180px)",
         height: "auto",
-        backgroundColor: "#ffffff",
+        backgroundColor: "var(--bg-surface)",
         borderRadius: "14px",
-        boxShadow: "0 10px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.02)",
-        padding: "3.5rem 4.5rem",
+        boxShadow: "0 10px 25px -5px rgba(0,0,0,0.05)",
+        padding: "clamp(1.25rem, 4vw, 3.5rem) clamp(1rem, 5vw, 4rem)",
         position: "relative",
-        border: "1px solid #e2e8f0",
+        border: "1px solid var(--border-color)",
         display: "flex",
         flexDirection: "column",
         overflowWrap: "break-word",
         wordBreak: "break-word"
       }}>
-        {/* Remote Cursor Flags Overlay */}
+        {/* Remote Cursor Flags */}
         <div style={{ position: "relative", width: "100%", height: 0 }}>
           {Object.entries(remoteCursors).map(([cid, data]) => {
             const user = activeUsers.find((u) => u.client_id === cid);
             if (!user) return null;
-            const leftPos = Math.min(650, ((data.cursor?.index || 0) % 40) * 15);
+            const leftPos = Math.min(550, ((data.cursor?.index || 0) % 35) * 15);
 
             return (
               <div
                 key={cid}
                 style={{
                   position: "absolute",
-                  top: "-28px",
+                  top: "-26px",
                   left: `${leftPos}px`,
                   backgroundColor: user.color || "#2563eb",
                   color: "#ffffff",
-                  padding: "2px 8px",
-                  borderRadius: "6px",
-                  fontSize: "0.75rem",
+                  padding: "2px 7px",
+                  borderRadius: "5px",
+                  fontSize: "0.7rem",
                   fontWeight: "700",
                   pointerEvents: "none",
                   transition: "left 0.15s ease",
@@ -432,7 +367,7 @@ export default function RichTextEditor({
                   zIndex: 10,
                   display: "flex",
                   alignItems: "center",
-                  gap: "0.25rem"
+                  gap: "0.2rem"
                 }}
               >
                 <span>{user.name}</span>
@@ -455,9 +390,9 @@ export default function RichTextEditor({
             outline: "none",
             fontSize: "1.05rem",
             lineHeight: "1.85",
-            color: "#1e293b",
+            color: "var(--text-primary)",
             fontFamily: "inherit",
-            minHeight: "400px",
+            minHeight: "350px",
             wordBreak: "break-word",
             overflowWrap: "break-word"
           }}
@@ -469,16 +404,15 @@ export default function RichTextEditor({
 }
 
 const toolBtn = (isActive) => ({
-  padding: "0.35rem 0.45rem",
+  padding: "0.3rem 0.4rem",
   borderRadius: "6px",
   border: isActive ? "1px solid #bfdbfe" : "1px solid transparent",
   backgroundColor: isActive ? "#eff6ff" : "transparent",
-  color: isActive ? "#2563eb" : "#475569",
+  color: isActive ? "#2563eb" : "var(--text-secondary)",
   fontWeight: isActive ? "700" : "500",
   cursor: "pointer",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  transition: "all 0.15s ease",
-  boxShadow: isActive ? "0 1px 2px rgba(37, 99, 235, 0.15)" : "none"
+  transition: "all 0.15s ease"
 });

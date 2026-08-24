@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { api } from "../services/api";
 import { useCollaboration } from "../hooks/useCollaboration";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 import RichTextEditor from "../components/RichTextEditor";
 import WhiteboardCanvas from "../components/WhiteboardCanvas";
 import CollaboratorDock from "../components/CollaboratorDock";
@@ -21,13 +22,16 @@ import {
   FileEdit,
   MessageSquare,
   Download,
-  WifiOff
+  WifiOff,
+  Sun,
+  Moon
 } from "lucide-react";
 
 export default function EditorPage() {
   const { id } = useParams();
   const docId = parseInt(id, 10);
   const { user: currentUser } = useAuth();
+  const { theme, toggleTheme, isDark } = useTheme();
 
   const [docMeta, setDocMeta] = useState(null);
   const [title, setTitle] = useState("");
@@ -45,7 +49,7 @@ export default function EditorPage() {
   const [toastType, setToastType] = useState("success");
 
   // Tab & Network
-  const [activeTab, setActiveTab] = useState("text"); // "text" | "canvas"
+  const [activeTab, setActiveTab] = useState("text");
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const drawListenerRef = useRef(null);
 
@@ -127,7 +131,6 @@ export default function EditorPage() {
       op_type: "replace",
       text: newHtml,
     });
-    // Cache in local storage for offline resilience
     localStorage.setItem(`offline_doc_${docId}`, newHtml);
   };
 
@@ -153,52 +156,58 @@ export default function EditorPage() {
     showToast("File imported successfully!");
   };
 
+  const handleNotifyMention = (mentionTag) => {
+    showToast(`🔔 ${mentionTag} was notified of your mention!`, "info");
+  };
+
   const allCollaborators = docMeta?.collaborators || [];
 
   return (
-    <div style={{ height: "100vh", display: "flex", flexDirection: "column", backgroundColor: "#f8fafc" }}>
+    <div style={{ height: "100vh", display: "flex", flexDirection: "column", backgroundColor: "var(--bg-primary)" }}>
       {/* Offline Alert Banner */}
       {!isOnline && (
         <div style={{
-          backgroundColor: "#fef3c7", color: "#92400e", padding: "0.4rem 1rem",
+          backgroundColor: "#fef3c7", color: "#92400e", padding: "0.35rem 1rem",
           display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem",
           fontSize: "0.8125rem", fontWeight: "600", borderBottom: "1px solid #fde68a"
         }}>
           <WifiOff size={15} />
-          <span>You are working offline. Changes are saved locally and will auto-sync when connection is restored.</span>
+          <span>You are working offline. Changes are auto-saved locally.</span>
         </div>
       )}
 
-      {/* Clean Minimalist Navigation Top Bar */}
+      {/* Responsive Top Bar */}
       <header style={{
-        backgroundColor: "#ffffff",
-        borderBottom: "1px solid #e2e8f0",
-        padding: "0.6rem 1.5rem",
+        backgroundColor: "var(--bg-surface)",
+        borderBottom: "1px solid var(--border-color)",
+        padding: "0.5rem 1rem",
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-        zIndex: 30
+        zIndex: 30,
+        flexWrap: "wrap",
+        gap: "0.5rem"
       }}>
-        {/* Left: Back & Clean Editable Title */}
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+        {/* Left: Back & Editable Title */}
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", minWidth: 0, flex: "1 1 auto" }}>
           <Link
             to="/dashboard"
             style={{
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              color: "#64748b",
-              padding: "0.4rem",
+              color: "var(--text-secondary)",
+              padding: "0.35rem",
               borderRadius: "8px",
               textDecoration: "none"
             }}
             title="Back to Documents"
           >
-            <ArrowLeft size={19} />
+            <ArrowLeft size={18} />
           </Link>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-            <FileEdit size={17} color="#2563eb" />
+          <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", minWidth: 0 }}>
+            <FileEdit size={16} color="#2563eb" style={{ flexShrink: 0 }} />
             <input
               type="text"
               value={title}
@@ -209,22 +218,24 @@ export default function EditorPage() {
               placeholder="Untitled Document"
               title="Click to rename"
               style={{
-                fontSize: "1.05rem",
+                fontSize: "0.95rem",
                 fontWeight: "700",
-                color: "#0f172a",
+                color: "var(--text-primary)",
                 border: "1px solid transparent",
                 background: "transparent",
                 outline: "none",
-                width: "240px",
-                padding: "3px 6px",
+                maxWidth: "180px",
+                padding: "2px 4px",
                 borderRadius: "6px",
-                transition: "border 0.15s"
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap"
               }}
               onFocus={(e) => e.target.style.borderColor = "#93c5fd"}
             />
             {titleSaved && (
-              <span style={{ display: "flex", alignItems: "center", gap: "0.2rem", fontSize: "0.75rem", color: "#16a34a", fontWeight: "600" }}>
-                <CheckCircle size={13} /> Saved
+              <span style={{ display: "flex", alignItems: "center", gap: "0.2rem", fontSize: "0.75rem", color: "#16a34a", fontWeight: "600", flexShrink: 0 }}>
+                <CheckCircle size={12} /> Saved
               </span>
             )}
           </div>
@@ -233,154 +244,173 @@ export default function EditorPage() {
         {/* Center: Mode Switcher Tabs */}
         <div style={{
           display: "flex",
-          backgroundColor: "#f1f5f9",
-          padding: "0.25rem",
+          backgroundColor: "var(--bg-primary)",
+          padding: "0.2rem",
           borderRadius: "10px",
-          border: "1px solid #e2e8f0"
+          border: "1px solid var(--border-color)"
         }}>
           <button
             onClick={() => setActiveTab("text")}
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "0.4rem",
-              padding: "0.35rem 0.9rem",
-              borderRadius: "8px",
+              gap: "0.35rem",
+              padding: "0.3rem 0.75rem",
+              borderRadius: "7px",
               border: "none",
-              backgroundColor: activeTab === "text" ? "#ffffff" : "transparent",
-              color: activeTab === "text" ? "#2563eb" : "#64748b",
+              backgroundColor: activeTab === "text" ? "var(--bg-surface)" : "transparent",
+              color: activeTab === "text" ? "#2563eb" : "var(--text-secondary)",
               fontWeight: "600",
-              fontSize: "0.875rem",
+              fontSize: "0.8125rem",
               cursor: "pointer",
               boxShadow: activeTab === "text" ? "0 1px 3px rgba(0,0,0,0.08)" : "none"
             }}
           >
-            <FileText size={16} />
-            <span>Document</span>
+            <FileText size={15} />
+            <span>Doc</span>
           </button>
           <button
             onClick={() => setActiveTab("canvas")}
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "0.4rem",
-              padding: "0.35rem 0.9rem",
-              borderRadius: "8px",
+              gap: "0.35rem",
+              padding: "0.3rem 0.75rem",
+              borderRadius: "7px",
               border: "none",
-              backgroundColor: activeTab === "canvas" ? "#ffffff" : "transparent",
-              color: activeTab === "canvas" ? "#2563eb" : "#64748b",
+              backgroundColor: activeTab === "canvas" ? "var(--bg-surface)" : "transparent",
+              color: activeTab === "canvas" ? "#2563eb" : "var(--text-secondary)",
               fontWeight: "600",
-              fontSize: "0.875rem",
+              fontSize: "0.8125rem",
               cursor: "pointer",
               boxShadow: activeTab === "canvas" ? "0 1px 3px rgba(0,0,0,0.08)" : "none"
             }}
           >
-            <Palette size={16} />
-            <span>Whiteboard</span>
+            <Palette size={15} />
+            <span>Canvas</span>
           </button>
         </div>
 
         {/* Right: Actions */}
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          {/* Comments Button */}
+        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+          {/* Theme Toggle */}
+          <button
+            onClick={toggleTheme}
+            style={{
+              padding: "0.4rem",
+              borderRadius: "8px",
+              border: "1px solid var(--border-color)",
+              backgroundColor: "var(--bg-surface)",
+              color: "var(--text-secondary)",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center"
+            }}
+            title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+          >
+            {isDark ? <Sun size={15} color="#fbbf24" /> : <Moon size={15} />}
+          </button>
+
+          {/* Comments */}
           <button
             onClick={() => setShowComments(!showComments)}
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "0.35rem",
-              padding: "0.45rem 0.75rem",
+              gap: "0.3rem",
+              padding: "0.4rem 0.65rem",
               borderRadius: "8px",
-              border: "1px solid #cbd5e1",
-              backgroundColor: showComments ? "#eff6ff" : "#ffffff",
-              color: showComments ? "#2563eb" : "#475569",
-              fontSize: "0.875rem",
+              border: "1px solid var(--border-color)",
+              backgroundColor: showComments ? "#eff6ff" : "var(--bg-surface)",
+              color: showComments ? "#2563eb" : "var(--text-secondary)",
+              fontSize: "0.8125rem",
               cursor: "pointer",
               fontWeight: "500"
             }}
             title="Comments & Discussions"
           >
-            <MessageSquare size={16} />
-            <span>Comments</span>
+            <MessageSquare size={15} />
+            <span className="hidden-mobile">Comments</span>
           </button>
 
-          {/* Export / Import Button */}
+          {/* Export */}
           <button
             onClick={() => setShowExport(true)}
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "0.35rem",
-              padding: "0.45rem 0.75rem",
+              gap: "0.3rem",
+              padding: "0.4rem 0.65rem",
               borderRadius: "8px",
-              border: "1px solid #cbd5e1",
-              backgroundColor: "#ffffff",
-              fontSize: "0.875rem",
+              border: "1px solid var(--border-color)",
+              backgroundColor: "var(--bg-surface)",
+              fontSize: "0.8125rem",
               cursor: "pointer",
-              color: "#475569",
+              color: "var(--text-secondary)",
               fontWeight: "500"
             }}
             title="Export & Import"
           >
-            <Download size={16} />
-            <span>Export</span>
+            <Download size={15} />
+            <span className="hidden-mobile">Export</span>
           </button>
 
-          {/* History Button */}
+          {/* History */}
           <button
             onClick={() => setShowHistory(true)}
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "0.35rem",
-              padding: "0.45rem 0.75rem",
+              gap: "0.3rem",
+              padding: "0.4rem 0.65rem",
               borderRadius: "8px",
-              border: "1px solid #cbd5e1",
-              backgroundColor: "#ffffff",
-              fontSize: "0.875rem",
+              border: "1px solid var(--border-color)",
+              backgroundColor: "var(--bg-surface)",
+              fontSize: "0.8125rem",
               cursor: "pointer",
-              color: "#475569",
+              color: "var(--text-secondary)",
               fontWeight: "500"
             }}
             title="Version History"
           >
-            <History size={16} />
-            <span>History</span>
+            <History size={15} />
+            <span className="hidden-mobile">History</span>
           </button>
 
-          {/* Share Button */}
+          {/* Share */}
           {(docMeta?.user_role === "owner" || docMeta?.is_public) && (
             <button
               onClick={() => setShowShare(true)}
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: "0.35rem",
-                padding: "0.45rem 0.95rem",
+                gap: "0.3rem",
+                padding: "0.4rem 0.75rem",
                 borderRadius: "8px",
                 border: "none",
                 backgroundColor: "#2563eb",
                 color: "#ffffff",
-                fontSize: "0.875rem",
+                fontSize: "0.8125rem",
                 fontWeight: "600",
                 cursor: "pointer",
                 boxShadow: "0 2px 4px rgba(37, 99, 235, 0.2)"
               }}
             >
-              <Share2 size={16} />
+              <Share2 size={15} />
               <span>Share</span>
             </button>
           )}
         </div>
       </header>
 
-      {/* Main Workspace with Infinite Scroll Area */}
+      {/* Main Workspace */}
       <main style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", position: "relative" }}>
         {activeTab === "text" ? (
           <div style={{
             flex: 1,
             overflowY: "auto",
-            padding: "2rem 1.5rem",
+            padding: "1.5rem 1rem",
             display: "flex",
             justifyContent: "center"
           }}>
@@ -434,23 +464,25 @@ export default function EditorPage() {
           onRollback={(restored) => {
             setContent(restored.content);
             fetchDoc();
-            showToast("Restored document revision successfully!");
+            showToast("Restored document checkpoint successfully!");
           }}
         />
       )}
 
-      {/* Inline Comments & Threaded Discussions Drawer */}
+      {/* Comments Drawer with @mention */}
       {showComments && (
         <CommentsDrawer
           docId={docId}
           currentUserId={currentUser?.id}
+          allCollaborators={allCollaborators}
           initialDraft={commentDraft}
           onClearDraft={() => setCommentDraft(null)}
+          onNotifyMention={handleNotifyMention}
           onClose={() => setShowComments(false)}
         />
       )}
 
-      {/* Multi-Format Export & Import Modal */}
+      {/* Export Modal */}
       {showExport && (
         <ExportModal
           isOpen={showExport}

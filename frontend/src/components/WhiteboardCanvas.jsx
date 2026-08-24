@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from "react";
+import { useTheme } from "../context/ThemeContext";
 import ConfirmModal from "./ConfirmModal";
 import PromptModal from "./PromptModal";
 import {
@@ -25,13 +26,13 @@ import {
 
 const COLORS = [
   "#0f172a", // Black
+  "#ffffff", // White
   "#ef4444", // Red
   "#2563eb", // Blue
   "#16a34a", // Green
   "#f59e0b", // Amber
   "#9333ea", // Purple
   "#ea580c", // Orange
-  "#06b6d4", // Cyan
 ];
 
 export default function WhiteboardCanvas({
@@ -41,12 +42,13 @@ export default function WhiteboardCanvas({
   registerDrawListener,
   isReadOnly
 }) {
+  const { isDark } = useTheme();
   const canvasRef = useRef(null);
   const [elements, setElements] = useState([]);
   const [history, setHistory] = useState([]);
   const [redoStack, setRedoStack] = useState([]);
-  const [tool, setTool] = useState("select"); // "select" | "pen" | "highlighter" | "rect" | "circle" | "arrow" | "line" | "text" | "eraser"
-  const [color, setColor] = useState("#2563eb");
+  const [tool, setTool] = useState("select");
+  const [color, setColor] = useState(isDark ? "#ffffff" : "#2563eb");
   const [strokeWidth, setStrokeWidth] = useState(3);
   const [isFilled, setIsFilled] = useState(false);
   const [showGrid, setShowGrid] = useState(true);
@@ -68,7 +70,6 @@ export default function WhiteboardCanvas({
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [textPromptData, setTextPromptData] = useState(null);
 
-  // Load persistent elements on startup
   useEffect(() => {
     try {
       const parsed = typeof initialData === "string" ? JSON.parse(initialData || "[]") : initialData;
@@ -80,7 +81,6 @@ export default function WhiteboardCanvas({
     }
   }, [initialData]);
 
-  // Handle incoming remote drawings
   useEffect(() => {
     if (registerDrawListener) {
       registerDrawListener((drawPayload) => {
@@ -98,7 +98,6 @@ export default function WhiteboardCanvas({
     }
   }, [registerDrawListener]);
 
-  // Keyboard Shortcuts (Delete, Space for Pan, Ctrl+Z/Y)
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === "Delete" || e.key === "Backspace") {
@@ -111,7 +110,6 @@ export default function WhiteboardCanvas({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [selectedId, isReadOnly, elements]);
 
-  // Transform screen coordinate to canvas virtual coordinate
   const screenToCanvas = (clientX, clientY) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
@@ -124,7 +122,6 @@ export default function WhiteboardCanvas({
     };
   };
 
-  // Check if point hits an element
   const getHitElement = (pt) => {
     for (let i = elements.length - 1; i >= 0; i--) {
       const el = elements[i];
@@ -149,7 +146,6 @@ export default function WhiteboardCanvas({
     return null;
   };
 
-  // Render Canvas (Elements + Grid + Selection Bounding Box)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -164,10 +160,14 @@ export default function WhiteboardCanvas({
 
     ctx.clearRect(0, 0, rect.width, rect.height);
 
+    // Background Fill
+    ctx.fillStyle = isDark ? "#131b2e" : "#ffffff";
+    ctx.fillRect(0, 0, rect.width, rect.height);
+
     // 1. Draw Dot Grid Background
     if (showGrid) {
       ctx.save();
-      ctx.fillStyle = "#cbd5e1";
+      ctx.fillStyle = isDark ? "#334155" : "#cbd5e1";
       const gridSize = 24 * zoom;
       const startX = (pan.x % gridSize);
       const startY = (pan.y % gridSize);
@@ -190,8 +190,8 @@ export default function WhiteboardCanvas({
 
     allToRender.forEach((el) => {
       ctx.save();
-      ctx.strokeStyle = el.color || "#0f172a";
-      ctx.fillStyle = el.color || "#0f172a";
+      ctx.strokeStyle = el.color || (isDark ? "#f8fafc" : "#0f172a");
+      ctx.fillStyle = el.color || (isDark ? "#f8fafc" : "#0f172a");
       ctx.lineWidth = el.strokeWidth || 3;
 
       if (el.tool === "highlighter") {
@@ -256,9 +256,9 @@ export default function WhiteboardCanvas({
         ctx.fillText(el.text || "", el.x1, el.y1);
       }
 
-      // Draw Selection Bounding Box
+      // Selection Bounding Box
       if (el.id === selectedId) {
-        ctx.strokeStyle = "#2563eb";
+        ctx.strokeStyle = "#3b82f6";
         ctx.lineWidth = 1.5 / zoom;
         ctx.setLineDash([4, 4]);
 
@@ -282,11 +282,9 @@ export default function WhiteboardCanvas({
     });
 
     ctx.restore();
-  }, [elements, currentShape, pan, zoom, showGrid, selectedId]);
+  }, [elements, currentShape, pan, zoom, showGrid, selectedId, isDark]);
 
-  // Mouse Down Event
   const handleMouseDown = (e) => {
-    // Middle click or Spacebar for Canvas Pan
     if (e.button === 1 || e.spaceKey) {
       setIsPanning(true);
       setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
@@ -296,7 +294,6 @@ export default function WhiteboardCanvas({
     if (isReadOnly) return;
     const pt = screenToCanvas(e.clientX, e.clientY);
 
-    // Selection Mode
     if (tool === "select") {
       const hit = getHitElement(pt);
       if (hit) {
@@ -348,7 +345,6 @@ export default function WhiteboardCanvas({
     }
   };
 
-  // Mouse Move Event
   const handleMouseMove = (e) => {
     if (isPanning) {
       setPan({ x: e.clientX - panStart.x, y: e.clientY - panStart.y });
@@ -396,7 +392,6 @@ export default function WhiteboardCanvas({
     }
   };
 
-  // Mouse Up Event
   const handleMouseUp = () => {
     if (isPanning) {
       setIsPanning(false);
@@ -416,7 +411,6 @@ export default function WhiteboardCanvas({
     setCurrentShape(null);
   };
 
-  // Mouse Wheel Zoom
   const handleWheel = (e) => {
     e.preventDefault();
     const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
@@ -504,56 +498,59 @@ export default function WhiteboardCanvas({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
-      {/* Top Floating Control Bar */}
+      {/* Top Floating Control Bar - Responsive & Scrollable */}
       <div style={{
-        position: "absolute", top: "16px", left: "50%", transform: "translateX(-50%)",
-        backgroundColor: "rgba(255, 255, 255, 0.95)",
+        position: "absolute", top: "12px", left: "50%", transform: "translateX(-50%)",
+        backgroundColor: "var(--bg-surface-glass)",
         backdropFilter: "blur(12px)",
-        padding: "0.4rem 0.8rem", borderRadius: "14px",
-        boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)",
-        display: "flex", alignItems: "center", gap: "0.5rem", zIndex: 10,
-        border: "1px solid #e2e8f0"
+        padding: "0.35rem 0.65rem", borderRadius: "14px",
+        boxShadow: "0 10px 25px -5px rgba(0,0,0,0.15)",
+        display: "flex", alignItems: "center", gap: "0.4rem", zIndex: 10,
+        border: "1px solid var(--border-color)",
+        maxWidth: "96%",
+        overflowX: "auto",
+        WebkitOverflowScrolling: "touch"
       }}>
         {/* Tool Selectors */}
-        <div style={{ display: "flex", gap: "2px", borderRight: "1px solid #e2e8f0", paddingRight: "0.5rem" }}>
+        <div style={{ display: "flex", gap: "2px", borderRight: "1px solid var(--border-color)", paddingRight: "0.4rem", flexShrink: 0 }}>
           <button onClick={() => setTool("select")} style={toolBtn(tool === "select")} title="Select / Move Shape">
-            <MousePointer size={17} />
+            <MousePointer size={16} />
           </button>
           <button onClick={() => setTool("pen")} style={toolBtn(tool === "pen")} title="Pen">
-            <Pen size={17} />
+            <Pen size={16} />
           </button>
           <button onClick={() => setTool("highlighter")} style={toolBtn(tool === "highlighter")} title="Highlighter">
-            <Highlighter size={17} />
+            <Highlighter size={16} />
           </button>
           <button onClick={() => setTool("rect")} style={toolBtn(tool === "rect")} title="Rectangle">
-            <Square size={17} />
+            <Square size={16} />
           </button>
-          <button onClick={() => setTool("circle")} style={toolBtn(tool === "circle")} title="Circle / Ellipse">
-            <Circle size={17} />
+          <button onClick={() => setTool("circle")} style={toolBtn(tool === "circle")} title="Circle">
+            <Circle size={16} />
           </button>
           <button onClick={() => setTool("arrow")} style={toolBtn(tool === "arrow")} title="Arrow">
-            <ArrowRight size={17} />
+            <ArrowRight size={16} />
           </button>
           <button onClick={() => setTool("line")} style={toolBtn(tool === "line")} title="Line">
-            <Minus size={17} />
+            <Minus size={16} />
           </button>
           <button onClick={() => setTool("text")} style={toolBtn(tool === "text")} title="Text Box">
-            <Type size={17} />
+            <Type size={16} />
           </button>
           <button onClick={() => setTool("eraser")} style={toolBtn(tool === "eraser")} title="Eraser">
-            <Eraser size={17} />
+            <Eraser size={16} />
           </button>
         </div>
 
         {/* Color Palette */}
-        <div style={{ display: "flex", gap: "5px", alignItems: "center", borderRight: "1px solid #e2e8f0", paddingRight: "0.5rem" }}>
+        <div style={{ display: "flex", gap: "4px", alignItems: "center", borderRight: "1px solid var(--border-color)", paddingRight: "0.4rem", flexShrink: 0 }}>
           {COLORS.map((c) => (
             <button
               key={c}
               onClick={() => setColor(c)}
               style={{
-                width: "18px", height: "18px", borderRadius: "50%",
-                backgroundColor: c, border: color === c ? "2px solid #2563eb" : "1px solid #cbd5e1",
+                width: "16px", height: "16px", borderRadius: "50%",
+                backgroundColor: c, border: color === c ? "2px solid #3b82f6" : "1px solid var(--border-color)",
                 cursor: "pointer", transform: color === c ? "scale(1.25)" : "scale(1)",
                 transition: "all 0.15s"
               }}
@@ -562,87 +559,87 @@ export default function WhiteboardCanvas({
           <button
             onClick={() => setIsFilled(!isFilled)}
             style={{
-              padding: "4px", borderRadius: "6px", border: "1px solid #e2e8f0",
+              padding: "3px", borderRadius: "6px", border: "1px solid var(--border-color)",
               backgroundColor: isFilled ? "#eff6ff" : "transparent",
-              color: isFilled ? "#2563eb" : "#64748b", cursor: "pointer", marginLeft: "2px"
+              color: isFilled ? "#2563eb" : "var(--text-secondary)", cursor: "pointer", marginLeft: "2px"
             }}
-            title={isFilled ? "Filled Shape Active" : "Transparent Shape"}
+            title={isFilled ? "Filled Shape" : "Transparent Shape"}
           >
-            <PaintBucket size={15} />
+            <PaintBucket size={14} />
           </button>
         </div>
 
         {/* Thickness Slider */}
-        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", borderRight: "1px solid #e2e8f0", paddingRight: "0.5rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", borderRight: "1px solid var(--border-color)", paddingRight: "0.4rem", flexShrink: 0 }}>
           <input
             type="range"
             min={1}
             max={8}
             value={strokeWidth}
             onChange={(e) => setStrokeWidth(parseInt(e.target.value, 10))}
-            style={{ width: "50px", cursor: "pointer" }}
+            style={{ width: "45px", cursor: "pointer" }}
             title="Stroke Width"
           />
         </div>
 
         {/* Actions & Delete Tool */}
-        <div style={{ display: "flex", gap: "2px" }}>
+        <div style={{ display: "flex", gap: "2px", flexShrink: 0 }}>
           {selectedId && (
-            <button onClick={deleteSelectedElement} style={{ ...toolBtn(false), color: "#dc2626" }} title="Delete Selected (Del)">
-              <Trash2 size={16} />
+            <button onClick={deleteSelectedElement} style={{ ...toolBtn(false), color: "#dc2626" }} title="Delete Selected">
+              <Trash2 size={15} />
             </button>
           )}
-          <button onClick={undo} disabled={history.length === 0} style={toolBtn(false)} title="Undo (Ctrl+Z)">
-            <Undo2 size={16} />
+          <button onClick={undo} disabled={history.length === 0} style={toolBtn(false)} title="Undo">
+            <Undo2 size={15} />
           </button>
-          <button onClick={redo} disabled={redoStack.length === 0} style={toolBtn(false)} title="Redo (Ctrl+Y)">
-            <Redo2 size={16} />
+          <button onClick={redo} disabled={redoStack.length === 0} style={toolBtn(false)} title="Redo">
+            <Redo2 size={15} />
           </button>
           <button onClick={() => setShowClearConfirm(true)} style={toolBtn(false)} title="Clear Whiteboard">
-            <RotateCcw size={16} />
+            <RotateCcw size={15} />
           </button>
           <button onClick={downloadPNG} style={toolBtn(false)} title="Download PNG">
-            <Download size={16} />
+            <Download size={15} />
           </button>
         </div>
       </div>
 
       {/* Bottom-Left Zoom & Grid Controls */}
       <div style={{
-        position: "absolute", bottom: "24px", left: "24px", zIndex: 10,
-        backgroundColor: "rgba(255, 255, 255, 0.95)",
+        position: "absolute", bottom: "16px", left: "16px", zIndex: 10,
+        backgroundColor: "var(--bg-surface-glass)",
         backdropFilter: "blur(8px)",
-        borderRadius: "10px", padding: "4px 8px",
-        display: "flex", alignItems: "center", gap: "6px",
-        border: "1px solid #e2e8f0", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)"
+        borderRadius: "10px", padding: "3px 6px",
+        display: "flex", alignItems: "center", gap: "4px",
+        border: "1px solid var(--border-color)", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)"
       }}>
         <button onClick={() => setZoom((z) => Math.max(0.4, z - 0.1))} style={zoomBtn} title="Zoom Out">
-          <ZoomOut size={14} />
+          <ZoomOut size={13} />
         </button>
-        <span style={{ fontSize: "0.75rem", fontWeight: "700", color: "#334155", minWidth: "36px", textAlign: "center" }}>
+        <span style={{ fontSize: "0.7rem", fontWeight: "700", color: "var(--text-primary)", minWidth: "32px", textAlign: "center" }}>
           {Math.round(zoom * 100)}%
         </span>
         <button onClick={() => setZoom((z) => Math.min(3.0, z + 0.1))} style={zoomBtn} title="Zoom In">
-          <ZoomIn size={14} />
+          <ZoomIn size={13} />
         </button>
         <button onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }} style={zoomBtn} title="Reset View">
-          <Maximize2 size={13} />
+          <Maximize2 size={12} />
         </button>
-        <div style={{ width: "1px", height: "14px", backgroundColor: "#e2e8f0", margin: "0 2px" }} />
+        <div style={{ width: "1px", height: "12px", backgroundColor: "var(--border-color)", margin: "0 2px" }} />
         <button
           onClick={() => setShowGrid(!showGrid)}
-          style={{ ...zoomBtn, color: showGrid ? "#2563eb" : "#94a3b8" }}
-          title="Toggle Dot Grid"
+          style={{ ...zoomBtn, color: showGrid ? "#2563eb" : "var(--text-secondary)" }}
+          title="Toggle Grid"
         >
-          <Grid size={14} />
+          <Grid size={13} />
         </button>
       </div>
 
       {/* Infinite Canvas */}
       <div
         style={{
-          flex: 1, backgroundColor: "#ffffff", borderRadius: "14px",
-          border: "1px solid #e2e8f0", overflow: "hidden", margin: "1rem",
+          flex: 1, backgroundColor: "var(--bg-surface)", borderRadius: "14px",
+          border: "1px solid var(--border-color)", overflow: "hidden", margin: "0.75rem",
           boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)"
         }}
         onWheel={handleWheel}
@@ -662,7 +659,7 @@ export default function WhiteboardCanvas({
         />
       </div>
 
-      {/* Custom Clear Confirmation Modal */}
+      {/* Clear Confirmation Modal */}
       <ConfirmModal
         isOpen={showClearConfirm}
         title="Clear Entire Whiteboard?"
@@ -673,7 +670,7 @@ export default function WhiteboardCanvas({
         onCancel={() => setShowClearConfirm(false)}
       />
 
-      {/* Custom Text Prompt Modal */}
+      {/* Text Prompt Modal */}
       <PromptModal
         isOpen={!!textPromptData}
         title="Add Text Note"
@@ -687,12 +684,12 @@ export default function WhiteboardCanvas({
 }
 
 const toolBtn = (isActive) => ({
-  padding: "0.4rem",
-  borderRadius: "8px",
+  padding: "0.35rem",
+  borderRadius: "7px",
   border: "none",
   cursor: "pointer",
   backgroundColor: isActive ? "#eff6ff" : "transparent",
-  color: isActive ? "#2563eb" : "#64748b",
+  color: isActive ? "#2563eb" : "var(--text-secondary)",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
@@ -703,8 +700,8 @@ const zoomBtn = {
   border: "none",
   background: "none",
   cursor: "pointer",
-  color: "#64748b",
-  padding: "4px",
+  color: "var(--text-secondary)",
+  padding: "3px",
   borderRadius: "4px",
   display: "flex",
   alignItems: "center",

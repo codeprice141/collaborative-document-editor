@@ -1,105 +1,135 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+:root {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color-scheme: light dark;
+  --bg-primary: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-surface-glass: rgba(255, 255, 255, 0.95);
+  --border-color: #e2e8f0;
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+  --accent-color: #2563eb;
+  --accent-hover: #1d4ed8;
+}
+
+[data-theme="dark"] {
+  --bg-primary: #090d16;
+  --bg-surface: #131b2e;
+  --bg-surface-glass: rgba(19, 27, 46, 0.95);
+  --border-color: #222f49;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --accent-color: #3b82f6;
+  --accent-hover: #60a5fa;
+}
 
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  color: #0f172a;
-  background-color: #f8fafc;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  overflow-x: hidden;
 }
 
 /* Rich Document Typography */
 .rich-document-body h1 {
   font-size: 2rem;
   font-weight: 800;
-  color: #0f172a;
-  margin-top: 1.25rem;
-  margin-bottom: 0.75rem;
+  margin: 1.25rem 0 0.75rem 0;
   line-height: 1.25;
+  color: var(--text-primary);
 }
 
 .rich-document-body h2 {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #1e293b;
-  margin-top: 1rem;
-  margin-bottom: 0.5rem;
+  margin: 1rem 0 0.5rem 0;
   line-height: 1.3;
+  color: var(--text-primary);
 }
 
 .rich-document-body h3 {
   font-size: 1.2rem;
   font-weight: 600;
-  color: #334155;
-  margin-top: 0.85rem;
-  margin-bottom: 0.4rem;
+  margin: 0.75rem 0 0.35rem 0;
+  color: var(--text-primary);
 }
 
 .rich-document-body p {
-  margin-bottom: 0.75rem;
-  line-height: 1.8;
+  margin: 0.4rem 0;
 }
 
-.rich-document-body ul, .rich-document-body ol {
-  padding-left: 1.5rem;
-  margin-bottom: 0.75rem;
+.rich-document-body blockquote {
+  border-left: 3.5px solid var(--accent-color);
+  margin: 0.8rem 0;
+  padding: 0.4rem 0 0.4rem 1rem;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.rich-document-body pre {
+  background: rgba(100, 116, 139, 0.12);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.9rem;
+  margin: 0.75rem 0;
+  overflow-x: auto;
+}
+
+.rich-document-body ul,
+.rich-document-body ol {
+  margin: 0.5rem 0 0.5rem 1.5rem;
 }
 
 .rich-document-body li {
   margin-bottom: 0.25rem;
 }
 
-.rich-document-body blockquote {
-  border-left: 4px solid #3b82f6;
-  padding-left: 1rem;
-  margin: 1rem 0;
-  color: #475569;
-  font-style: italic;
-  background-color: #f8fafc;
-  padding-top: 0.5rem;
-  padding-bottom: 0.5rem;
-  border-radius: 0 8px 8px 0;
+/* Mention Pill Tag in Text */
+.mention-tag {
+  display: inline-block;
+  background-color: #dbeafe;
+  color: #1e40af;
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.9em;
 }
 
-.rich-document-body pre {
-  background-color: #0f172a;
-  color: #e2e8f0;
-  padding: 1rem;
-  border-radius: 8px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.9rem;
-  overflow-x: auto;
-  margin: 1rem 0;
+[data-theme="dark"] .mention-tag {
+  background-color: #1e3a8a;
+  color: #bfdbfe;
 }
 
-.rich-document-body code {
-  background-color: #f1f5f9;
-  color: #0f172a;
-  padding: 0.2rem 0.4rem;
-  border-radius: 4px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.875rem;
+/* Mobile & Tablet Responsiveness */
+@media (max-width: 768px) {
+  .rich-document-body h1 {
+    font-size: 1.5rem;
+  }
+  .rich-document-body h2 {
+    font-size: 1.25rem;
+  }
+  .rich-document-body h3 {
+    font-size: 1.1rem;
+  }
 }
 
-.rich-document-body pre code {
-  background-color: transparent;
-  color: inherit;
-  padding: 0;
-}
-
-/* Animations */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
 }
 
-@keyframes pulseSlow {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+@keyframes slideInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
 }

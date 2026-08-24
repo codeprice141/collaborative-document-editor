@@ -1,10 +1,12 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { Layers, LogOut } from "lucide-react";
+import { useTheme } from "../context/ThemeContext";
+import { Layers, LogOut, Sun, Moon } from "lucide-react";
 
 export default function Navbar() {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme, isDark } = useTheme();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -14,15 +16,14 @@ export default function Navbar() {
 
   return (
     <header style={{
-      backgroundColor: "rgba(255, 255, 255, 0.95)",
-      backdropFilter: "blur(10px)",
-      borderBottom: "1px solid #e2e8f0",
-      padding: "0.75rem 2rem",
+      backgroundColor: "var(--bg-surface)",
+      borderBottom: "1px solid var(--border-color)",
+      padding: "0.75rem 1.25rem",
       display: "flex",
       justifyContent: "space-between",
       alignItems: "center"
     }}>
-      {/* Brand Logo & Name (No Underline!) */}
+      {/* Brand Logo */}
       <Link
         to="/dashboard"
         style={{
@@ -30,7 +31,7 @@ export default function Navbar() {
           alignItems: "center",
           gap: "0.6rem",
           textDecoration: "none",
-          color: "#0f172a"
+          color: "var(--text-primary)"
         }}
       >
         <div style={{
@@ -46,76 +47,84 @@ export default function Navbar() {
         }}>
           <Layers size={18} />
         </div>
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          <span style={{ fontWeight: "800", fontSize: "1.05rem", letterSpacing: "-0.02em", color: "#0f172a" }}>
-            CollabEditor
-          </span>
-        </div>
+        <span style={{ fontWeight: "800", fontSize: "1.05rem", letterSpacing: "-0.02em", color: "var(--text-primary)" }}>
+          CollabEditor
+        </span>
       </Link>
 
-      {/* User Profile & Logout */}
-      {user && (
-        <div style={{ display: "flex", alignItems: "center", gap: "0.85rem" }}>
-          <div style={{
+      {/* Actions: Theme Toggle & User Profile */}
+      <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+        {/* Theme Toggle Button */}
+        <button
+          onClick={toggleTheme}
+          style={{
+            padding: "0.4rem",
+            borderRadius: "8px",
+            border: "1px solid var(--border-color)",
+            backgroundColor: "var(--bg-surface)",
+            color: "var(--text-secondary)",
+            cursor: "pointer",
             display: "flex",
             alignItems: "center",
-            gap: "0.5rem",
-            padding: "0.3rem 0.65rem",
-            borderRadius: "9999px",
-            backgroundColor: "#f8fafc",
-            border: "1px solid #e2e8f0"
-          }}>
-            <div style={{
-              width: "26px",
-              height: "26px",
-              borderRadius: "50%",
-              backgroundColor: "#3b82f6",
-              color: "#ffffff",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontWeight: "700",
-              fontSize: "0.75rem"
-            }}>
-              {user.full_name.charAt(0).toUpperCase()}
-            </div>
-            <span style={{ fontSize: "0.8125rem", fontWeight: "600", color: "#334155" }}>
-              {user.full_name}
-            </span>
-          </div>
+            justifyContent: "center"
+          }}
+          title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+        >
+          {isDark ? <Sun size={17} color="#fbbf24" /> : <Moon size={17} />}
+        </button>
 
-          <button
-            onClick={handleLogout}
-            style={{
+        {user && (
+          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+            <div style={{
               display: "flex",
               alignItems: "center",
-              gap: "0.35rem",
-              padding: "0.4rem 0.75rem",
-              borderRadius: "8px",
-              border: "1px solid #e2e8f0",
-              backgroundColor: "#ffffff",
-              color: "#64748b",
-              fontSize: "0.8125rem",
-              fontWeight: "500",
-              cursor: "pointer",
-              transition: "all 0.15s"
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "#fee2e2";
-              e.currentTarget.style.color = "#dc2626";
-              e.currentTarget.style.borderColor = "#fca5a5";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "#ffffff";
-              e.currentTarget.style.color = "#64748b";
-              e.currentTarget.style.borderColor = "#e2e8f0";
-            }}
-          >
-            <LogOut size={15} />
-            <span>Logout</span>
-          </button>
-        </div>
-      )}
+              gap: "0.4rem",
+              padding: "0.25rem 0.55rem",
+              borderRadius: "9999px",
+              backgroundColor: "var(--bg-primary)",
+              border: "1px solid var(--border-color)"
+            }}>
+              <div style={{
+                width: "24px",
+                height: "24px",
+                borderRadius: "50%",
+                backgroundColor: "#3b82f6",
+                color: "#ffffff",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontWeight: "700",
+                fontSize: "0.75rem"
+              }}>
+                {user.full_name.charAt(0).toUpperCase()}
+              </div>
+              <span style={{ fontSize: "0.8125rem", fontWeight: "600", color: "var(--text-primary)" }}>
+                {user.full_name}
+              </span>
+            </div>
+
+            <button
+              onClick={handleLogout}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.35rem",
+                padding: "0.4rem 0.65rem",
+                borderRadius: "8px",
+                border: "1px solid var(--border-color)",
+                backgroundColor: "var(--bg-surface)",
+                color: "var(--text-secondary)",
+                fontSize: "0.8125rem",
+                fontWeight: "500",
+                cursor: "pointer"
+              }}
+              title="Logout"
+            >
+              <LogOut size={15} />
+            </button>
+          </div>
+        )}
+      </div>
     </header>
   );
 }
