@@ -1,5 +1,21 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 
+function resolveWebSocketUrl(docId, token, clientId) {
+  if (import.meta.env.VITE_WS_URL) {
+    return `${import.meta.env.VITE_WS_URL}/api/v1/ws/documents/${docId}?token=${token}&client_id=${clientId}`;
+  }
+  if (typeof window !== "undefined") {
+    // If running on localhost / 127.0.0.1, connect directly to FastAPI backend on port 8000
+    if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+      return `ws://127.0.0.1:8000/api/v1/ws/documents/${docId}?token=${token}&client_id=${clientId}`;
+    }
+    // If running on Ngrok or remote domain, use wss / ws on the current host
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    return `${protocol}//${window.location.host}/api/v1/ws/documents/${docId}?token=${token}&client_id=${clientId}`;
+  }
+  return `ws://127.0.0.1:8000/api/v1/ws/documents/${docId}?token=${token}&client_id=${clientId}`;
+}
+
 export function useCollaboration(docId, onRemoteDraw) {
   const [content, setContent] = useState("");
   const [version, setVersion] = useState(0);
@@ -7,7 +23,7 @@ export function useCollaboration(docId, onRemoteDraw) {
   const [userRole, setUserRole] = useState("editor");
   const [myColor, setMyColor] = useState("#2563eb");
   const [remoteCursors, setRemoteCursors] = useState({});
-  const [connectionStatus, setConnectionStatus] = useState("connecting");
+  const [connectionStatus, setConnectionStatus] = useState("connecting"); // "connected" | "connecting" | "disconnected"
   const [typingUsers, setTypingUsers] = useState([]);
   const wsRef = useRef(null);
   const contentRef = useRef(content);
@@ -24,11 +40,13 @@ export function useCollaboration(docId, onRemoteDraw) {
 
     setConnectionStatus("connecting");
     const clientId = "client_" + Math.random().toString(36).substring(2, 8);
-    const wsUrl = `ws://localhost:8000/api/v1/ws/documents/${docId}?token=${token}&client_id=${clientId}`;
+    const wsUrl = resolveWebSocketUrl(docId, token, clientId);
+    console.log("Connecting WebSocket to:", wsUrl);
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
     ws.onopen = () => {
+      console.log("WebSocket connected successfully!");
       setConnectionStatus("connected");
     };
 
@@ -42,6 +60,7 @@ export function useCollaboration(docId, onRemoteDraw) {
             setUserRole(data.user_role || "editor");
             setMyColor(data.user_color || "#2563eb");
             setActiveUsers(data.active_users || []);
+            setConnectionStatus("connected");
             break;
 
           case "operation_broadcast":
@@ -82,7 +101,6 @@ export function useCollaboration(docId, onRemoteDraw) {
               },
             }));
 
-            // Track who is actively typing
             if (data.is_typing) {
               setTypingUsers((prev) => {
                 const found = data.user_id;
@@ -104,6 +122,13 @@ export function useCollaboration(docId, onRemoteDraw) {
             setContent(data.current_content);
             setVersion(data.current_version);
             break;
+
+          case "error":
+            console.error("Server error:", data.message);
+            if (data.message.includes("permission denied") || data.message.includes("Authentication failed")) {
+              setConnectionStatus("disconnected");
+            }
+            break;
         }
       } catch (err) {
         console.error("Failed to parse WebSocket message:", err);
@@ -111,11 +136,12 @@ export function useCollaboration(docId, onRemoteDraw) {
     };
 
     ws.onerror = (err) => {
-      console.error("WebSocket error:", err);
+      console.error("WebSocket connection error:", err);
       setConnectionStatus("disconnected");
     };
 
-    ws.onclose = () => {
+    ws.onclose = (event) => {
+      console.log("WebSocket closed with code:", event.code);
       setConnectionStatus("disconnected");
     };
 

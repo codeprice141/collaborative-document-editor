@@ -1,4 +1,10 @@
-const API_BASE = import.meta.env.VITE_API_BASE || "/api/v1";
+const API_BASE = (function() {
+  if (import.meta.env.VITE_API_BASE) return import.meta.env.VITE_API_BASE;
+  if (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")) {
+    return "http://localhost:8000/api/v1";
+  }
+  return "/api/v1";
+})();
 
 function getAuthHeaders() {
   const token = localStorage.getItem("token");
@@ -23,6 +29,13 @@ async function handleResponse(res, defaultErrorMsg = "Request failed") {
 }
 
 export const api = {
+  async searchUsers(query = "") {
+    const res = await fetch(`${API_BASE}/auth/users?q=${encodeURIComponent(query)}`, {
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(res, "Failed to search users");
+  },
+
   async register(email, password, full_name) {
     const res = await fetch(`${API_BASE}/auth/register`, {
       method: "POST",
@@ -39,14 +52,6 @@ export const api = {
       body: JSON.stringify({ email, password }),
     });
     return handleResponse(res, "Login failed");
-  },
-
-
-  async searchUsers(query = "") {
-    const res = await fetch(`${API_BASE}/auth/users?q=${encodeURIComponent(query)}`, {
-      headers: getAuthHeaders(),
-    });
-    return handleResponse(res, "Failed to search users");
   },
 
   async getMe() {

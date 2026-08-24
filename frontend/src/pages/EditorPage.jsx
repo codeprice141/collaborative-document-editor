@@ -14,8 +14,10 @@ import {
   FileText,
   Palette,
   Users,
+  CheckCircle,
+  Edit2,
   Sparkles,
-  CheckCircle2
+  RefreshCw
 } from "lucide-react";
 
 export default function EditorPage() {
@@ -23,6 +25,8 @@ export default function EditorPage() {
   const docId = parseInt(id, 10);
   const [docMeta, setDocMeta] = useState(null);
   const [title, setTitle] = useState("");
+  const [isSavingTitle, setIsSavingTitle] = useState(false);
+  const [titleSaved, setTitleSaved] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [activeTab, setActiveTab] = useState("text"); // "text" | "canvas"
@@ -71,13 +75,24 @@ export default function EditorPage() {
     fetchDoc();
   }, [docId]);
 
-  const handleTitleBlur = async () => {
-    if (title !== docMeta?.title && !isReadOnly) {
+  const saveTitle = async (newTitle) => {
+    if (newTitle.trim() && newTitle !== docMeta?.title && !isReadOnly) {
+      setIsSavingTitle(true);
       try {
-        await api.updateDocument(docId, { title });
+        await api.updateDocument(docId, { title: newTitle.trim() });
+        setTitleSaved(true);
+        setTimeout(() => setTitleSaved(false), 2000);
       } catch (err) {
         console.error("Failed to save title", err);
+      } finally {
+        setIsSavingTitle(false);
       }
+    }
+  };
+
+  const handleTitleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.target.blur();
     }
   };
 
@@ -115,9 +130,7 @@ export default function EditorPage() {
     sendCursor(cursor, false);
   };
 
-  // Combine active connected users with all invited collaborators to show status
   const allCollaborators = docMeta?.collaborators || [];
-  const activeUserEmails = new Set(activeUsers.map((u) => u.email));
 
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column", backgroundColor: "#f8fafc" }}>
@@ -126,33 +139,50 @@ export default function EditorPage() {
         backgroundColor: "#ffffff", borderBottom: "1px solid #e2e8f0",
         padding: "0.5rem 1.25rem", display: "flex", justifyContent: "space-between", alignItems: "center"
       }}>
-        {/* Left: Back & Title */}
+        {/* Left: Back & Editable Title */}
         <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
           <Link to="/dashboard" style={{ display: "flex", alignItems: "center", color: "#64748b", padding: "0.4rem", borderRadius: "6px" }} title="Back to Dashboard">
             <ArrowLeft size={20} />
           </Link>
 
           <div>
-            <input
-              type="text"
-              value={title}
-              disabled={isReadOnly}
-              onChange={(e) => setTitle(e.target.value)}
-              onBlur={handleTitleBlur}
-              placeholder="Untitled Document"
-              style={{
-                fontSize: "1.125rem", fontWeight: "700", color: "#0f172a",
-                border: "none", background: "transparent", outline: "none", width: "260px"
-              }}
-            />
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.75rem", color: "#94a3b8" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <input
+                type="text"
+                value={title}
+                disabled={isReadOnly}
+                onChange={(e) => setTitle(e.target.value)}
+                onBlur={(e) => saveTitle(e.target.value)}
+                onKeyDown={handleTitleKeyDown}
+                placeholder="Untitled Document"
+                title="Click to rename document"
+                style={{
+                  fontSize: "1.125rem", fontWeight: "700", color: "#0f172a",
+                  border: "1px solid transparent", background: "transparent",
+                  outline: "none", width: "240px", padding: "2px 6px",
+                  borderRadius: "4px", transition: "border 0.2s"
+                }}
+                onFocus={(e) => e.target.style.borderColor = "#93c5fd"}
+              />
+              {titleSaved && (
+                <span style={{ display: "flex", alignItems: "center", gap: "0.2rem", fontSize: "0.75rem", color: "#16a34a", fontWeight: "600" }}>
+                  <CheckCircle size={14} /> Saved
+                </span>
+              )}
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.75rem", color: "#94a3b8", paddingLeft: "6px" }}>
               <span style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
                 {connectionStatus === "connected" ? (
                   <Wifi size={12} color="#10b981" />
+                ) : connectionStatus === "connecting" ? (
+                  <RefreshCw size={12} color="#f59e0b" className="animate-spin" />
                 ) : (
                   <WifiOff size={12} color="#ef4444" />
                 )}
-                {connectionStatus === "connected" ? "Live Synced" : "Connecting..."}
+                <span style={{ color: connectionStatus === "connected" ? "#10b981" : connectionStatus === "connecting" ? "#f59e0b" : "#ef4444", fontWeight: "600" }}>
+                  {connectionStatus === "connected" ? "Live Synced" : connectionStatus === "connecting" ? "Connecting..." : "Disconnected"}
+                </span>
               </span>
               <span>•</span>
               <span>v{version}</span>
@@ -162,7 +192,7 @@ export default function EditorPage() {
           </div>
         </div>
 
-        {/* Center: Mode Switcher (Text vs Canvas) */}
+        {/* Center: Mode Switcher (Document vs Whiteboard) */}
         <div style={{ display: "flex", backgroundColor: "#f1f5f9", padding: "0.25rem", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
           <button
             onClick={() => setActiveTab("text")}
@@ -196,26 +226,25 @@ export default function EditorPage() {
 
         {/* Right: Collaborator Avatars & Actions */}
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-          {/* Active & Offline Collaborators Stamps */}
-          <div style={{ display: "flex", alignItems: "center", gap: "0.25rem", marginRight: "0.5rem" }}>
+          {/* Active Collaborator Avatars */}
+          <div style={{ display: "flex", alignItems: "center" }}>
             {activeUsers.map((u) => (
               <div
                 key={u.client_id}
-                title={`Active Now: ${u.name} (${u.email})`}
+                title={`Active: ${u.name} (${u.email})`}
                 style={{
                   position: "relative",
                   width: "32px", height: "32px", borderRadius: "50%",
                   backgroundColor: u.color || "#2563eb", color: "#ffffff",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: "0.75rem", fontWeight: "700", border: "2px solid #ffffff",
-                  boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+                  boxShadow: "0 2px 4px rgba(0,0,0,0.1)", marginLeft: "-6px"
                 }}
               >
                 {u.name.charAt(0).toUpperCase()}
-                {/* Glowing Green Online Stamp */}
                 <span style={{
                   position: "absolute", bottom: "-2px", right: "-2px",
-                  width: "10px", height: "10px", borderRadius: "50%",
+                  width: "9px", height: "9px", borderRadius: "50%",
                   backgroundColor: "#22c55e", border: "2px solid #ffffff"
                 }} />
               </div>
@@ -252,31 +281,56 @@ export default function EditorPage() {
         </div>
       </header>
 
-      {/* Main Content Workspace */}
+      {/* Main Content Area */}
       <main style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
         {activeTab === "text" ? (
           <div style={{ flex: 1, overflowY: "auto", padding: "2rem", display: "flex", flexDirection: "column", alignItems: "center" }}>
-            {/* Live Typing & Collaborators Info Banner */}
-            {activeUsers.length > 1 && (
-              <div style={{
-                width: "100%", maxWidth: "850px", marginBottom: "0.75rem",
-                display: "flex", justifyContent: "space-between", alignItems: "center",
-                padding: "0.4rem 0.75rem", backgroundColor: "#eff6ff",
-                borderRadius: "8px", border: "1px solid #bfdbfe", fontSize: "0.8125rem", color: "#1e40af"
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  <Users size={14} />
-                  <span>
-                    <strong>{activeUsers.length} active collaborators</strong> on this stone tablet right now!
-                  </span>
-                </div>
-                {typingUsers.length > 0 && (
-                  <span style={{ fontStyle: "italic", color: "#2563eb", animation: "pulse 1s infinite" }}>
-                    ⚡ Typing in progress...
-                  </span>
-                )}
+            {/* Live Collaborator Presence Stamps Bar */}
+            <div style={{
+              width: "100%", maxWidth: "850px", marginBottom: "0.75rem",
+              display: "flex", justifyContent: "space-between", alignItems: "center",
+              padding: "0.5rem 0.85rem", backgroundColor: "#ffffff",
+              borderRadius: "8px", border: "1px solid #e2e8f0", fontSize: "0.8125rem",
+              boxShadow: "0 1px 2px rgba(0,0,0,0.03)"
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+                <span style={{ fontWeight: "600", color: "#64748b", display: "flex", alignItems: "center", gap: "0.25rem" }}>
+                  <Users size={14} /> Collaborators:
+                </span>
+                {allCollaborators.map((c) => {
+                  const isActive = activeUsers.some((u) => u.email === c.user.email);
+                  const activeUserObj = activeUsers.find((u) => u.email === c.user.email);
+                  const color = activeUserObj?.color || (c.role === "owner" ? "#2563eb" : "#16a34a");
+
+                  return (
+                    <div
+                      key={c.id}
+                      style={{
+                        display: "flex", alignItems: "center", gap: "0.35rem",
+                        padding: "2px 8px", borderRadius: "9999px",
+                        backgroundColor: isActive ? `${color}15` : "#f1f5f9",
+                        border: `1px solid ${isActive ? color : "#cbd5e1"}`,
+                        color: isActive ? color : "#64748b",
+                        fontSize: "0.75rem", fontWeight: "600"
+                      }}
+                    >
+                      <span style={{
+                        width: "7px", height: "7px", borderRadius: "50%",
+                        backgroundColor: isActive ? "#22c55e" : "#94a3b8"
+                      }} />
+                      <span>{c.user.full_name}</span>
+                      <span style={{ fontSize: "0.65rem", opacity: 0.8 }}>({c.role})</span>
+                    </div>
+                  );
+                })}
               </div>
-            )}
+
+              {typingUsers.length > 0 && (
+                <span style={{ fontStyle: "italic", color: "#2563eb", fontWeight: "500", animation: "pulse 1s infinite" }}>
+                  ⚡ Live editing in progress...
+                </span>
+              )}
+            </div>
 
             {/* Document Sheet */}
             <div style={{
@@ -292,31 +346,37 @@ export default function EditorPage() {
                 </div>
               )}
 
-              {/* Active Remote Cursors Flags */}
+              {/* Active Remote Cursor Name Tags */}
               <div style={{ position: "relative", width: "100%", height: 0 }}>
                 {Object.entries(remoteCursors).map(([cid, data]) => {
                   const user = activeUsers.find((u) => u.client_id === cid);
                   if (!user) return null;
+                  const leftPos = Math.min(600, ((data.cursor?.index || 0) % 50) * 12);
+
                   return (
                     <div
                       key={cid}
                       style={{
                         position: "absolute",
-                        top: "-24px",
-                        left: `${Math.min(100, (data.cursor?.index || 0) * 1.5)}px`,
+                        top: "-26px",
+                        left: `${leftPos}px`,
                         backgroundColor: user.color || "#2563eb",
-                        color: "#fff",
-                        padding: "2px 6px",
-                        borderRadius: "4px",
-                        fontSize: "0.7rem",
-                        fontWeight: "600",
+                        color: "#ffffff",
+                        padding: "2px 8px",
+                        borderRadius: "6px",
+                        fontSize: "0.75rem",
+                        fontWeight: "700",
                         pointerEvents: "none",
-                        transition: "left 0.1s ease",
-                        boxShadow: "0 2px 4px rgba(0,0,0,0.15)",
-                        zIndex: 10
+                        transition: "left 0.15s ease",
+                        boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
+                        zIndex: 10,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.25rem"
                       }}
                     >
-                      {user.name} ✏️
+                      <span>{user.name}</span>
+                      <span>✏️</span>
                     </div>
                   );
                 })}
@@ -329,7 +389,7 @@ export default function EditorPage() {
                 onChange={handleTextChange}
                 onKeyUp={handleCursorMove}
                 onClick={handleCursorMove}
-                placeholder="Type your notes, ideas, or write together in real time..."
+                placeholder="Type notes, project plans, or collaborate with teammates..."
                 style={{
                   width: "100%", flex: 1, border: "none", outline: "none", resize: "none",
                   fontSize: "1.05rem", lineHeight: "1.75", fontFamily: "inherit",
