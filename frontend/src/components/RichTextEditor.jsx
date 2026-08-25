@@ -4,9 +4,6 @@ import {
   Italic,
   Underline,
   Strikethrough,
-  Heading1,
-  Heading2,
-  Heading3,
   List,
   ListOrdered,
   Quote,
@@ -16,7 +13,8 @@ import {
   AlignLeft,
   AlignCenter,
   AlignRight,
-  MessageSquarePlus
+  MessageSquarePlus,
+  ChevronDown
 } from "lucide-react";
 
 export default function RichTextEditor({
@@ -34,20 +32,16 @@ export default function RichTextEditor({
   // Floating comment button state
   const [selectedText, setSelectedText] = useState("");
   const [selectionCoords, setSelectionCoords] = useState(null);
+  const [showColorPicker, setShowColorPicker] = useState(false);
 
   const [activeStyles, setActiveStyles] = useState({
     bold: false,
     italic: false,
     underline: false,
     strikeThrough: false,
-    h1: false,
-    h2: false,
-    h3: false,
-    p: false,
+    blockType: "p",
     ul: false,
     ol: false,
-    quote: false,
-    code: false,
     justifyLeft: false,
     justifyCenter: false,
     justifyRight: false,
@@ -67,7 +61,7 @@ export default function RichTextEditor({
       const isRight = document.queryCommandState("justifyRight");
 
       const selection = window.getSelection();
-      let currentBlock = "";
+      let currentBlock = "p";
       if (selection && selection.rangeCount > 0) {
         let node = selection.anchorNode;
         while (node && node !== editorRef.current) {
@@ -102,14 +96,9 @@ export default function RichTextEditor({
         italic: isItalic,
         underline: isUnderline,
         strikeThrough: isStrike,
-        h1: currentBlock === "h1",
-        h2: currentBlock === "h2",
-        h3: currentBlock === "h3",
-        p: currentBlock === "p" || (!currentBlock && !isUl && !isOl),
+        blockType: currentBlock,
         ul: isUl,
         ol: isOl,
-        quote: currentBlock === "blockquote",
-        code: currentBlock === "pre",
         justifyLeft: isLeft,
         justifyCenter: isCenter,
         justifyRight: isRight,
@@ -149,6 +138,11 @@ export default function RichTextEditor({
     updateActiveStyles();
   };
 
+  const handleBlockChange = (e) => {
+    const tag = e.target.value;
+    exec("formatBlock", tag === "p" ? "<p>" : `<${tag}>`);
+  };
+
   const handleInput = () => {
     if (isReadOnly || !editorRef.current) return;
     const newHtml = editorRef.current.innerHTML;
@@ -178,7 +172,13 @@ export default function RichTextEditor({
     }
   };
 
-  const HIGHLIGHT_COLORS = ["#fef08a", "#bbf7d0", "#bae6fd", "#fbcfe8", "#fed7aa"];
+  const HIGHLIGHT_COLORS = [
+    { label: "Yellow", color: "#fef08a" },
+    { label: "Green", color: "#bbf7d0" },
+    { label: "Blue", color: "#bae6fd" },
+    { label: "Pink", color: "#fbcfe8" },
+    { label: "Orange", color: "#fed7aa" },
+  ];
 
   return (
     <div style={{
@@ -229,105 +229,147 @@ export default function RichTextEditor({
         </div>
       )}
 
-      {/* Modern Ultra-Spacious Formatting Toolbar Pill */}
+      {/* Google Docs & Notion Grade Sleek Formatting Toolbar (Zero Horizontal Scroll!) */}
       {!isReadOnly && (
         <div style={{
           position: "sticky",
-          top: "20px",
+          top: "14px",
           zIndex: 20,
-          backgroundColor: "var(--bg-surface-glass)",
-          backdropFilter: "blur(20px)",
+          backgroundColor: "var(--bg-surface)",
           border: "1px solid var(--border-color)",
-          borderRadius: "20px",
-          padding: "14px 22px", // Ultra spacious luxurious padding!
+          borderRadius: "12px",
+          padding: "6px 10px",
           display: "flex",
           alignItems: "center",
-          gap: "10px",
-          boxShadow: "0 20px 40px -10px rgba(0,0,0,0.12), 0 8px 16px -4px rgba(0,0,0,0.06)",
-          margin: "10px auto 2.5rem auto",
+          gap: "6px",
+          boxShadow: "0 8px 24px -4px rgba(0,0,0,0.08), 0 2px 6px -1px rgba(0,0,0,0.04)",
+          margin: "0 auto 1.75rem auto",
+          width: "fit-content",
           maxWidth: "100%",
-          overflowX: "auto",
-          WebkitOverflowScrolling: "touch"
+          flexWrap: "wrap",
+          justifyContent: "center"
         }}>
-          {/* Text Styles */}
-          <div style={{ display: "flex", gap: "6px", borderRight: "1.5px solid var(--border-color)", paddingRight: "10px", flexShrink: 0, alignItems: "center" }}>
+          {/* Block Type Dropdown (Normal text, H1, H2, H3, Quote, Code) */}
+          <div style={{ display: "flex", alignItems: "center", borderRight: "1px solid var(--border-color)", paddingRight: "6px" }}>
+            <select
+              value={activeStyles.blockType}
+              onChange={handleBlockChange}
+              style={{
+                backgroundColor: "transparent",
+                border: "none",
+                fontSize: "0.8125rem",
+                fontWeight: "600",
+                color: "var(--text-primary)",
+                cursor: "pointer",
+                padding: "4px 6px",
+                borderRadius: "6px",
+                outline: "none"
+              }}
+            >
+              <option value="p">Normal text</option>
+              <option value="h1">Heading 1</option>
+              <option value="h2">Heading 2</option>
+              <option value="h3">Heading 3</option>
+              <option value="blockquote">Quote</option>
+              <option value="pre">Code block</option>
+            </select>
+          </div>
+
+          {/* Text Styles (B, I, U, S) */}
+          <div style={{ display: "flex", gap: "2px", borderRight: "1px solid var(--border-color)", paddingRight: "6px", alignItems: "center" }}>
             <button onClick={() => exec("bold")} style={toolBtn(activeStyles.bold)} title="Bold (Ctrl+B)">
-              <Bold size={17} />
+              <Bold size={15} />
             </button>
             <button onClick={() => exec("italic")} style={toolBtn(activeStyles.italic)} title="Italic (Ctrl+I)">
-              <Italic size={17} />
+              <Italic size={15} />
             </button>
             <button onClick={() => exec("underline")} style={toolBtn(activeStyles.underline)} title="Underline (Ctrl+U)">
-              <Underline size={17} />
+              <Underline size={15} />
             </button>
             <button onClick={() => exec("strikeThrough")} style={toolBtn(activeStyles.strikeThrough)} title="Strikethrough">
-              <Strikethrough size={17} />
+              <Strikethrough size={15} />
             </button>
           </div>
 
-          {/* Headings */}
-          <div style={{ display: "flex", gap: "6px", borderRight: "1.5px solid var(--border-color)", paddingRight: "10px", flexShrink: 0, alignItems: "center" }}>
-            <button onClick={() => exec("formatBlock", "<h1>")} style={toolBtn(activeStyles.h1)} title="Heading 1">
-              <Heading1 size={17} />
-            </button>
-            <button onClick={() => exec("formatBlock", "<h2>")} style={toolBtn(activeStyles.h2)} title="Heading 2">
-              <Heading2 size={17} />
-            </button>
-            <button onClick={() => exec("formatBlock", "<h3>")} style={toolBtn(activeStyles.h3)} title="Heading 3">
-              <Heading3 size={17} />
-            </button>
-            <button onClick={() => exec("formatBlock", "<p>")} style={toolBtn(activeStyles.p)} title="Paragraph">
-              <span style={{ fontSize: "0.9rem", fontWeight: "800", padding: "0 2px" }}>P</span>
-            </button>
-          </div>
-
-          {/* Lists & Quotes */}
-          <div style={{ display: "flex", gap: "6px", borderRight: "1.5px solid var(--border-color)", paddingRight: "10px", flexShrink: 0, alignItems: "center" }}>
+          {/* Lists (Bullet, Ordered) */}
+          <div style={{ display: "flex", gap: "2px", borderRight: "1px solid var(--border-color)", paddingRight: "6px", alignItems: "center" }}>
             <button onClick={() => exec("insertUnorderedList")} style={toolBtn(activeStyles.ul)} title="Bullet List">
-              <List size={17} />
+              <List size={15} />
             </button>
             <button onClick={() => exec("insertOrderedList")} style={toolBtn(activeStyles.ol)} title="Numbered List">
-              <ListOrdered size={17} />
-            </button>
-            <button onClick={() => exec("formatBlock", "<blockquote>")} style={toolBtn(activeStyles.quote)} title="Quote Block">
-              <Quote size={17} />
-            </button>
-            <button onClick={() => exec("formatBlock", "<pre>")} style={toolBtn(activeStyles.code)} title="Code Block">
-              <Code size={17} />
+              <ListOrdered size={15} />
             </button>
           </div>
 
-          {/* Alignment */}
-          <div style={{ display: "flex", gap: "6px", borderRight: "1.5px solid var(--border-color)", paddingRight: "10px", flexShrink: 0, alignItems: "center" }}>
+          {/* Alignment (Left, Center, Right) */}
+          <div style={{ display: "flex", gap: "2px", borderRight: "1px solid var(--border-color)", paddingRight: "6px", alignItems: "center" }}>
             <button onClick={() => exec("justifyLeft")} style={toolBtn(activeStyles.justifyLeft)} title="Align Left">
-              <AlignLeft size={17} />
+              <AlignLeft size={15} />
             </button>
             <button onClick={() => exec("justifyCenter")} style={toolBtn(activeStyles.justifyCenter)} title="Align Center">
-              <AlignCenter size={17} />
+              <AlignCenter size={15} />
             </button>
             <button onClick={() => exec("justifyRight")} style={toolBtn(activeStyles.justifyRight)} title="Align Right">
-              <AlignRight size={17} />
+              <AlignRight size={15} />
             </button>
           </div>
 
-          {/* Highlights & Clear */}
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", paddingLeft: "6px", flexShrink: 0 }}>
-            <Highlighter size={16} color="var(--text-secondary)" />
-            {HIGHLIGHT_COLORS.map((c) => (
-              <button
-                key={c}
-                onClick={() => exec("hiliteColor", c)}
-                style={{
-                  width: "20px", height: "20px", borderRadius: "50%",
-                  backgroundColor: c, border: "1.5px solid var(--border-color)",
-                  cursor: "pointer", padding: 0, flexShrink: 0,
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.1)"
-                }}
-                title="Highlight Color"
-              />
-            ))}
-            <button onClick={() => exec("removeFormat")} style={{ ...toolBtn(false), marginLeft: "4px" }} title="Clear Formatting">
-              <RemoveFormatting size={16} />
+          {/* Color Highlighter Popover & Clear Format */}
+          <div style={{ display: "flex", alignItems: "center", gap: "4px", position: "relative" }}>
+            <button
+              onClick={() => setShowColorPicker(!showColorPicker)}
+              style={{
+                ...toolBtn(showColorPicker),
+                display: "flex",
+                alignItems: "center",
+                gap: "2px",
+                padding: "0 6px",
+                width: "auto"
+              }}
+              title="Highlight Color"
+            >
+              <Highlighter size={15} />
+              <ChevronDown size={12} />
+            </button>
+
+            {showColorPicker && (
+              <div style={{
+                position: "absolute",
+                top: "100%",
+                left: 0,
+                marginTop: "6px",
+                backgroundColor: "var(--bg-surface)",
+                border: "1px solid var(--border-color)",
+                borderRadius: "10px",
+                padding: "6px 8px",
+                display: "flex",
+                gap: "6px",
+                boxShadow: "0 10px 25px -5px rgba(0,0,0,0.15)",
+                zIndex: 30
+              }}>
+                {HIGHLIGHT_COLORS.map((c) => (
+                  <button
+                    key={c.color}
+                    onClick={() => {
+                      exec("hiliteColor", c.color);
+                      setShowColorPicker(false);
+                    }}
+                    style={{
+                      width: "20px",
+                      height: "20px",
+                      borderRadius: "50%",
+                      backgroundColor: c.color,
+                      border: "1.5px solid var(--border-color)",
+                      cursor: "pointer"
+                    }}
+                    title={c.label}
+                  />
+                ))}
+              </div>
+            )}
+
+            <button onClick={() => exec("removeFormat")} style={toolBtn(false)} title="Clear Formatting">
+              <RemoveFormatting size={15} />
             </button>
           </div>
         </div>
@@ -401,9 +443,9 @@ export default function RichTextEditor({
 }
 
 const toolBtn = (isActive) => ({
-  width: "38px",
-  height: "38px",
-  borderRadius: "10px",
+  width: "32px",
+  height: "32px",
+  borderRadius: "6px",
   border: isActive ? "1px solid #93c5fd" : "1px solid transparent",
   backgroundColor: isActive ? "#eff6ff" : "transparent",
   color: isActive ? "#2563eb" : "var(--text-secondary)",
