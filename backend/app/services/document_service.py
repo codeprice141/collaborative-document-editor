@@ -1,8 +1,6 @@
-from typing import List, Optional, Tuple
 from datetime import datetime, timezone
+from typing import List, Optional, Tuple
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
-from app.models.user import User
 from app.models.document import (
     Document,
     DocumentCollaborator,
@@ -14,38 +12,41 @@ from app.schemas.document import DocumentCreate, DocumentUpdate
 
 
 class DocumentService:
+    """Service layer handling document CRUD, access management, snapshots, and revision operations."""
+
     @staticmethod
-    def create_document(db: Session, user_id: int, doc_in: DocumentCreate) -> Document:
+    def create_document(db: Session, owner_id: int, doc_in: DocumentCreate) -> Document:
         doc = Document(
             title=doc_in.title,
-            content=doc_in.content,
-            drawing_data=getattr(doc_in, "drawing_data", "[]") or "[]",
+            content=doc_in.content or "",
+            drawing_data=doc_in.drawing_data or "[]",
+            owner_id=owner_id,
             version=0,
-            owner_id=user_id,
             is_public=False,
-            public_role=CollaboratorRole.VIEWER,
+            public_role=CollaboratorRole.VIEWER.value,
         )
         db.add(doc)
         db.flush()
 
-        # Add owner to collaborators table as OWNER
-        collab = DocumentCollaborator(
+        # Add owner to collaborators table
+        owner_collab = DocumentCollaborator(
             document_id=doc.id,
-            user_id=user_id,
-            role=CollaboratorRole.OWNER,
+            user_id=owner_id,
+            role=CollaboratorRole.OWNER.value,
         )
-        db.add(collab)
+        db.add(owner_collab)
 
-        # Create initial snapshot (v0)
+        # Create initial snapshot checkpoint (v0)
         snapshot = DocumentSnapshot(
             document_id=doc.id,
             version=0,
-            content=doc_in.content,
-            drawing_data=getattr(doc_in, "drawing_data", "[]") or "[]",
-            created_by_id=user_id,
+            content=doc.content,
+            drawing_data=doc.drawing_data,
+            created_by_id=owner_id,
             comment="Initial document creation",
         )
         db.add(snapshot)
+
         db.commit()
         db.refresh(doc)
         return doc
@@ -70,11 +71,11 @@ class DocumentService:
             .first()
         )
         if collab:
-            return collab.role
+            return CollaboratorRole(collab.role)
         
         # Check public link access
         if doc.is_public:
-            return doc.public_role
+            return CollaboratorRole(doc.public_role)
 
         return None
 
@@ -103,7 +104,7 @@ class DocumentService:
         )
         result = []
         for c in collabs:
-            result.append((c.document, c.role))
+            result.append((c.document, CollaboratorRole(c.role)))
         return result
 
     @staticmethod
@@ -114,40 +115,42 @@ class DocumentService:
             doc.title = update_in.title
         if update_in.content is not None:
             doc.content = update_in.content
-        if getattr(update_in, "drawing_data", None) is not None:
+        if update_in.drawing_data is not None:
             doc.drawing_data = update_in.drawing_data
         if update_in.is_public is not None:
             doc.is_public = update_in.is_public
         if update_in.public_role is not None:
-            doc.public_role = update_in.public_role
+            doc.public_role = CollaboratorRole(update_in.public_role).value
         doc.updated_at = datetime.now(timezone.utc)
         db.commit()
         db.refresh(doc)
         return doc
 
     @staticmethod
-    def delete_document(db: Session, doc: Document) -> bool:
+    def delete_document(db: Session, doc: Document) -> None:
+        """Soft-deletes/archives the document."""
         doc.is_archived = True
+        doc.updated_at = datetime.now(timezone.utc)
         db.commit()
-        return True
 
     @staticmethod
     def add_or_update_collaborator(
-        db: Session, doc_id: int, target_user_id: int, role: CollaboratorRole
+        db: Session, doc_id: int, user_id: int, role: str
     ) -> DocumentCollaborator:
+        role_enum = CollaboratorRole(role)
         collab = (
             db.query(DocumentCollaborator)
             .filter(
                 DocumentCollaborator.document_id == doc_id,
-                DocumentCollaborator.user_id == target_user_id,
+                DocumentCollaborator.user_id == user_id,
             )
             .first()
         )
         if collab:
-            collab.role = role
+            collab.role = role_enum.value
         else:
             collab = DocumentCollaborator(
-                document_id=doc_id, user_id=target_user_id, role=role
+                document_id=doc_id, user_id=user_id, role=role_enum.value
             )
             db.add(collab)
         db.commit()
@@ -155,12 +158,12 @@ class DocumentService:
         return collab
 
     @staticmethod
-    def remove_collaborator(db: Session, doc_id: int, target_user_id: int) -> bool:
+    def remove_collaborator(db: Session, doc_id: int, user_id: int) -> bool:
         collab = (
             db.query(DocumentCollaborator)
             .filter(
                 DocumentCollaborator.document_id == doc_id,
-                DocumentCollaborator.user_id == target_user_id,
+                DocumentCollaborator.user_id == user_id,
             )
             .first()
         )
@@ -172,18 +175,16 @@ class DocumentService:
 
     @staticmethod
     def create_snapshot(
-        db: Session, doc_id: int, user_id: Optional[int], comment: Optional[str]
-    ) -> Optional[DocumentSnapshot]:
+        db: Session, doc_id: int, user_id: int, comment: Optional[str] = None
+    ) -> DocumentSnapshot:
         doc = db.query(Document).filter(Document.id == doc_id).first()
-        if not doc:
-            return None
         snapshot = DocumentSnapshot(
             document_id=doc.id,
             version=doc.version,
             content=doc.content,
-            drawing_data=doc.drawing_data or "[]",
+            drawing_data=doc.drawing_data,
             created_by_id=user_id,
-            comment=comment or f"Snapshot at version {doc.version}",
+            comment=comment or f"Version {doc.version} checkpoint",
         )
         db.add(snapshot)
         db.commit()
@@ -195,7 +196,7 @@ class DocumentService:
         return (
             db.query(DocumentSnapshot)
             .filter(DocumentSnapshot.document_id == doc_id)
-            .order_by(DocumentSnapshot.version.desc())
+            .order_by(DocumentSnapshot.created_at.desc())
             .all()
         )
 
@@ -214,9 +215,8 @@ class DocumentService:
         if not snapshot:
             return None
         doc.content = snapshot.content
-        if snapshot.drawing_data is not None:
-            doc.drawing_data = snapshot.drawing_data
-        doc.version += 1
+        doc.drawing_data = snapshot.drawing_data or "[]"
+        doc.version = doc.version + 1
         doc.updated_at = datetime.now(timezone.utc)
         db.commit()
         db.refresh(doc)

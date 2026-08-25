@@ -5,16 +5,15 @@ function resolveWebSocketUrl(docId, token, clientId) {
     return `${import.meta.env.VITE_WS_URL}/api/v1/ws/documents/${docId}?token=${token}&client_id=${clientId}`;
   }
   if (typeof window !== "undefined") {
-    if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
-      return `ws://127.0.0.1:8000/api/v1/ws/documents/${docId}?token=${token}&client_id=${clientId}`;
-    }
+    const isDevPort = window.location.port === "5173" || window.location.port === "3000";
+    const portStr = isDevPort ? ":8000" : (window.location.port ? `:${window.location.port}` : "");
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    return `${protocol}//${window.location.host}/api/v1/ws/documents/${docId}?token=${token}&client_id=${clientId}`;
+    return `${protocol}//${window.location.hostname}${portStr}/api/v1/ws/documents/${docId}?token=${token}&client_id=${clientId}`;
   }
   return `ws://127.0.0.1:8000/api/v1/ws/documents/${docId}?token=${token}&client_id=${clientId}`;
 }
 
-export function useCollaboration(docId, onRemoteDraw) {
+export function useCollaboration(docId, onRemoteDraw, onRemoteComment) {
   const [content, setContent] = useState("");
   const [drawingData, setDrawingData] = useState("[]");
   const [version, setVersion] = useState(0);
@@ -28,8 +27,10 @@ export function useCollaboration(docId, onRemoteDraw) {
   const contentRef = useRef(content);
   const versionRef = useRef(version);
   const drawCallbackRef = useRef(onRemoteDraw);
+  const commentCallbackRef = useRef(onRemoteComment);
 
   drawCallbackRef.current = onRemoteDraw;
+  commentCallbackRef.current = onRemoteComment;
   contentRef.current = content;
   versionRef.current = version;
 
@@ -118,6 +119,12 @@ export function useCollaboration(docId, onRemoteDraw) {
             }
             break;
 
+          case "comment_broadcast":
+            if (commentCallbackRef.current) {
+              commentCallbackRef.current(data);
+            }
+            break;
+
           case "sync_recovery":
             setContent(data.current_content);
             if (data.drawing_data) setDrawingData(data.drawing_data);
@@ -185,6 +192,17 @@ export function useCollaboration(docId, onRemoteDraw) {
     }
   }, []);
 
+  const sendCommentEvent = useCallback((commentPayload) => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(
+        JSON.stringify({
+          type: "comment_event",
+          ...commentPayload,
+        })
+      );
+    }
+  }, []);
+
   return {
     content,
     setContent,
@@ -200,5 +218,6 @@ export function useCollaboration(docId, onRemoteDraw) {
     sendOperation,
     sendCursor,
     sendDraw,
+    sendCommentEvent,
   };
 }

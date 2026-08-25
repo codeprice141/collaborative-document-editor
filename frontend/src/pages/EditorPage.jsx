@@ -43,6 +43,7 @@ export default function EditorPage() {
   const [showComments, setShowComments] = useState(false);
   const [showExport, setShowExport] = useState(false);
   const [commentDraft, setCommentDraft] = useState(null);
+  const [incomingCommentEvent, setIncomingCommentEvent] = useState(null);
 
   // Toast Notification
   const [toastMsg, setToastMsg] = useState("");
@@ -80,6 +81,21 @@ export default function EditorPage() {
     }
   };
 
+  const handleRemoteComment = (data) => {
+    setIncomingCommentEvent(data);
+    // Check if current user was mentioned by someone else
+    if (data.sender_id !== currentUser?.id) {
+      const myName = currentUser?.full_name?.toLowerCase();
+      const myEmail = currentUser?.email?.toLowerCase();
+      const isMentioned = (data.mentioned_names || []).some((n) => myName && n.toLowerCase().includes(myName)) ||
+                          (data.mentioned_emails || []).includes(myEmail);
+
+      if (isMentioned) {
+        showToast(`🔔 ${data.sender_name} mentioned you in a comment!`, "info");
+      }
+    }
+  };
+
   const {
     content,
     setContent,
@@ -94,7 +110,8 @@ export default function EditorPage() {
     sendOperation,
     sendCursor,
     sendDraw,
-  } = useCollaboration(docId, handleRemoteDraw);
+    sendCommentEvent,
+  } = useCollaboration(docId, handleRemoteDraw, handleRemoteComment);
 
   const isReadOnly = userRole === "viewer";
 
@@ -156,10 +173,6 @@ export default function EditorPage() {
     showToast("File imported successfully!");
   };
 
-  const handleNotifyMention = (mentionTag) => {
-    showToast(`🔔 ${mentionTag} was notified of your mention!`, "info");
-  };
-
   const allCollaborators = docMeta?.collaborators || [];
 
   return (
@@ -176,7 +189,7 @@ export default function EditorPage() {
         </div>
       )}
 
-      {/* Modern Fixed Header (Never Wraps) */}
+      {/* Modern High-End Top Header */}
       <header style={{
         backgroundColor: "var(--bg-surface)",
         borderBottom: "1px solid var(--border-color)",
@@ -185,11 +198,11 @@ export default function EditorPage() {
         justifyContent: "space-between",
         alignItems: "center",
         zIndex: 30,
-        height: "56px",
+        height: "58px",
         flexShrink: 0
       }}>
         {/* Left: Back & Editable Title */}
-        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", minWidth: 0, flex: "0 1 auto" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", minWidth: 0, flex: "0 1 auto" }}>
           <Link
             to="/dashboard"
             style={{
@@ -218,18 +231,20 @@ export default function EditorPage() {
               placeholder="Untitled Document"
               title="Click to rename"
               style={{
-                fontSize: "0.95rem",
+                fontSize: "1rem",
                 fontWeight: "700",
                 color: "var(--text-primary)",
                 border: "1px solid transparent",
                 background: "transparent",
                 outline: "none",
                 width: "clamp(100px, 18vw, 220px)",
-                padding: "2px 4px",
+                padding: "2px 6px",
                 borderRadius: "6px",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
-                whiteSpace: "nowrap"
+                whiteSpace: "nowrap",
+                fontFamily: "inherit",
+                letterSpacing: "-0.01em"
               }}
               onFocus={(e) => e.target.style.borderColor = "#93c5fd"}
             />
@@ -241,11 +256,11 @@ export default function EditorPage() {
           </div>
         </div>
 
-        {/* Center: Mode Switcher Tabs in Top Bar */}
+        {/* Center: Sleek Segmented Doc / Canvas Tab Switcher */}
         <div style={{
           display: "flex",
           backgroundColor: "var(--bg-primary)",
-          padding: "0.2rem",
+          padding: "3px",
           borderRadius: "10px",
           border: "1px solid var(--border-color)",
           flexShrink: 0
@@ -256,19 +271,20 @@ export default function EditorPage() {
               display: "flex",
               alignItems: "center",
               gap: "0.35rem",
-              padding: "0.3rem 0.75rem",
-              borderRadius: "7px",
+              padding: "0.35rem 0.85rem",
+              borderRadius: "8px",
               border: "none",
               backgroundColor: activeTab === "text" ? "var(--bg-surface)" : "transparent",
               color: activeTab === "text" ? "#2563eb" : "var(--text-secondary)",
-              fontWeight: "600",
+              fontWeight: "700",
               fontSize: "0.8125rem",
               cursor: "pointer",
-              boxShadow: activeTab === "text" ? "0 1px 3px rgba(0,0,0,0.08)" : "none"
+              boxShadow: activeTab === "text" ? "0 2px 5px rgba(0,0,0,0.06)" : "none",
+              transition: "all 0.15s ease"
             }}
           >
             <FileText size={15} />
-            <span>Doc</span>
+            <span>Document</span>
           </button>
           <button
             onClick={() => setActiveTab("canvas")}
@@ -276,23 +292,24 @@ export default function EditorPage() {
               display: "flex",
               alignItems: "center",
               gap: "0.35rem",
-              padding: "0.3rem 0.75rem",
-              borderRadius: "7px",
+              padding: "0.35rem 0.85rem",
+              borderRadius: "8px",
               border: "none",
               backgroundColor: activeTab === "canvas" ? "var(--bg-surface)" : "transparent",
               color: activeTab === "canvas" ? "#2563eb" : "var(--text-secondary)",
-              fontWeight: "600",
+              fontWeight: "700",
               fontSize: "0.8125rem",
               cursor: "pointer",
-              boxShadow: activeTab === "canvas" ? "0 1px 3px rgba(0,0,0,0.08)" : "none"
+              boxShadow: activeTab === "canvas" ? "0 2px 5px rgba(0,0,0,0.06)" : "none",
+              transition: "all 0.15s ease"
             }}
           >
             <Palette size={15} />
-            <span>Canvas</span>
+            <span>Whiteboard</span>
           </button>
         </div>
 
-        {/* Right: Actions */}
+        {/* Right: Action Buttons */}
         <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexShrink: 0 }}>
           {/* Theme Toggle */}
           <button
@@ -327,7 +344,7 @@ export default function EditorPage() {
               color: showComments ? "#2563eb" : "var(--text-secondary)",
               fontSize: "0.8125rem",
               cursor: "pointer",
-              fontWeight: "500"
+              fontWeight: "600"
             }}
             title="Comments & Discussions"
           >
@@ -349,7 +366,7 @@ export default function EditorPage() {
               fontSize: "0.8125rem",
               cursor: "pointer",
               color: "var(--text-secondary)",
-              fontWeight: "500"
+              fontWeight: "600"
             }}
             title="Export & Import"
           >
@@ -371,7 +388,7 @@ export default function EditorPage() {
               fontSize: "0.8125rem",
               cursor: "pointer",
               color: "var(--text-secondary)",
-              fontWeight: "500"
+              fontWeight: "600"
             }}
             title="Version History"
           >
@@ -379,7 +396,7 @@ export default function EditorPage() {
             <span className="hidden-mobile">History</span>
           </button>
 
-          {/* Share */}
+          {/* Share Button */}
           {(docMeta?.user_role === "owner" || docMeta?.is_public) && (
             <button
               onClick={() => setShowShare(true)}
@@ -393,13 +410,13 @@ export default function EditorPage() {
                 backgroundColor: "#2563eb",
                 color: "#ffffff",
                 fontSize: "0.8125rem",
-                fontWeight: "600",
+                fontWeight: "700",
                 cursor: "pointer",
-                boxShadow: "0 2px 4px rgba(37, 99, 235, 0.2)"
+                boxShadow: "0 2px 4px rgba(37, 99, 235, 0.25)"
               }}
             >
               <Share2 size={15} />
-              <span>Share</span>
+              <span className="hidden-mobile">Share</span>
             </button>
           )}
         </div>
@@ -470,7 +487,7 @@ export default function EditorPage() {
         />
       )}
 
-      {/* Comments Drawer with @mention */}
+      {/* Real-Time Comments Drawer with Live Broadcast */}
       {showComments && (
         <CommentsDrawer
           docId={docId}
@@ -478,7 +495,8 @@ export default function EditorPage() {
           allCollaborators={allCollaborators}
           initialDraft={commentDraft}
           onClearDraft={() => setCommentDraft(null)}
-          onNotifyMention={handleNotifyMention}
+          onSendCommentEvent={sendCommentEvent}
+          incomingCommentEvent={incomingCommentEvent}
           onClose={() => setShowComments(false)}
         />
       )}

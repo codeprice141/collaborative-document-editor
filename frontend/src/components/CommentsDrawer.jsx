@@ -19,7 +19,8 @@ export default function CommentsDrawer({
   onClose,
   initialDraft = null,
   onClearDraft,
-  onNotifyMention
+  onSendCommentEvent,
+  incomingCommentEvent
 }) {
   const [comments, setComments] = useState([]);
   const [newCommentText, setNewCommentText] = useState("");
@@ -28,10 +29,11 @@ export default function CommentsDrawer({
   const [loading, setLoading] = useState(false);
 
   // @mention autocomplete state
-  const [mentionQuery, setMentionQuery] = useState(null); // string | null
+  const [mentionQuery, setMentionQuery] = useState(null);
   const [mentionSuggestions, setMentionSuggestions] = useState([]);
-  const [activeInputType, setActiveInputType] = useState("comment"); // "comment" | replyCommentId
+  const [activeInputType, setActiveInputType] = useState("comment");
   const textareaRef = useRef(null);
+  const replyInputRefs = useRef({});
 
   const fetchComments = async () => {
     try {
@@ -46,11 +48,17 @@ export default function CommentsDrawer({
     fetchComments();
   }, [docId]);
 
+  // Live auto-update when incoming real-time comment event arrives
+  useEffect(() => {
+    if (incomingCommentEvent) {
+      fetchComments();
+    }
+  }, [incomingCommentEvent]);
+
   // Handle @mention search
   useEffect(() => {
     if (mentionQuery !== null) {
       const query = mentionQuery.toLowerCase();
-      // Search in doc collaborators + team search
       const localMatches = allCollaborators
         .map((c) => c.user)
         .filter((u) => u && (u.full_name?.toLowerCase().includes(query) || u.email?.toLowerCase().includes(query)));
@@ -100,23 +108,34 @@ export default function CommentsDrawer({
       const lastAtIndex = textBefore.lastIndexOf("@");
       const newText = textBefore.slice(0, lastAtIndex) + mentionTag + textAfter;
       setNewCommentText(newText);
+
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+          const nextPos = lastAtIndex + mentionTag.length;
+          textareaRef.current.setSelectionRange(nextPos, nextPos);
+        }
+      }, 50);
     } else {
       const commentId = activeInputType;
       const text = replyTexts[commentId] || "";
       const lastAtIndex = text.lastIndexOf("@");
       const newText = text.slice(0, lastAtIndex) + mentionTag;
       setReplyTexts((prev) => ({ ...prev, [commentId]: newText }));
+
+      setTimeout(() => {
+        const inputEl = replyInputRefs.current[commentId];
+        if (inputEl) {
+          inputEl.focus();
+        }
+      }, 50);
     }
     setMentionQuery(null);
   };
 
-  const checkForMentionsAndNotify = (text) => {
-    const matches = text.match(/@([a-zA-Z0-9_\s]+)/g);
-    if (matches && matches.length > 0 && onNotifyMention) {
-      matches.forEach((m) => {
-        onNotifyMention(m.trim());
-      });
-    }
+  const getMentionedEntities = (text) => {
+    const matches = text.match(/@([a-zA-Z0-9_\s]+)/g) || [];
+    return matches.map((m) => m.replace("@", "").trim());
   };
 
   const handleCreateComment = async (e) => {
@@ -125,12 +144,20 @@ export default function CommentsDrawer({
     setLoading(true);
 
     try {
-      await api.createComment(docId, {
+      const created = await api.createComment(docId, {
         content: newCommentText.trim(),
         selected_text: initialDraft?.selectedText || null,
         anchor_range: initialDraft?.anchorRange || null,
       });
-      checkForMentionsAndNotify(newCommentText.trim());
+
+      if (onSendCommentEvent) {
+        onSendCommentEvent({
+          action: "created",
+          comment: created,
+          mentioned_names: getMentionedEntities(newCommentText.trim()),
+        });
+      }
+
       setNewCommentText("");
       if (onClearDraft) onClearDraft();
       await fetchComments();
@@ -144,6 +171,9 @@ export default function CommentsDrawer({
   const handleToggleResolve = async (commentId, currentResolved) => {
     try {
       await api.resolveComment(docId, commentId, !currentResolved);
+      if (onSendCommentEvent) {
+        onSendCommentEvent({ action: "resolved", comment_id: commentId, is_resolved: !currentResolved });
+      }
       await fetchComments();
     } catch (err) {
       console.error("Failed to resolve comment", err);
@@ -153,6 +183,9 @@ export default function CommentsDrawer({
   const handleDeleteComment = async (commentId) => {
     try {
       await api.deleteComment(docId, commentId);
+      if (onSendCommentEvent) {
+        onSendCommentEvent({ action: "deleted", comment_id: commentId });
+      }
       await fetchComments();
     } catch (err) {
       console.error("Failed to delete comment", err);
@@ -164,13 +197,48 @@ export default function CommentsDrawer({
     if (!text || !text.trim()) return;
 
     try {
-      await api.replyComment(docId, commentId, text.trim());
-      checkForMentionsAndNotify(text.trim());
+      const reply = await api.replyComment(docId, commentId, text.trim());
+      if (onSendCommentEvent) {
+        onSendCommentEvent({
+          action: "replied",
+          reply,
+          comment_id: commentId,
+          mentioned_names: getMentionedEntities(text.trim()),
+        });
+      }
       setReplyTexts((prev) => ({ ...prev, [commentId]: "" }));
       await fetchComments();
     } catch (err) {
       console.error("Failed to post reply", err);
     }
+  };
+
+  // Helper to render text with highlighted @mentions
+  const renderHighlightedText = (text) => {
+    if (!text) return "";
+    const parts = text.split(/(@[a-zA-Z0-9_\s]+)/g);
+    return parts.map((part, index) => {
+      if (part.startsWith("@")) {
+        return (
+          <span
+            key={index}
+            style={{
+              display: "inline-block",
+              backgroundColor: "#dbeafe",
+              color: "#1e40af",
+              padding: "1px 6px",
+              borderRadius: "6px",
+              fontWeight: "700",
+              fontSize: "0.85em",
+              margin: "0 2px"
+            }}
+          >
+            {part}
+          </span>
+        );
+      }
+      return part;
+    });
   };
 
   const displayedComments = filter === "open"
@@ -184,7 +252,7 @@ export default function CommentsDrawer({
       right: 0,
       bottom: 0,
       width: "100%",
-      maxWidth: "380px",
+      maxWidth: "390px",
       backgroundColor: "var(--bg-surface)",
       boxShadow: "-4px 0 25px rgba(0,0,0,0.15)",
       zIndex: 50,
@@ -274,10 +342,10 @@ export default function CommentsDrawer({
             rows={2}
             style={{
               width: "100%",
-              padding: "0.5rem 0.65rem",
+              padding: "0.55rem 0.75rem",
               borderRadius: "8px",
               border: "1px solid var(--border-color)",
-              backgroundColor: "var(--bg-surface)",
+              backgroundColor: "var(--input-bg)",
               color: "var(--text-primary)",
               fontSize: "0.875rem",
               outline: "none",
@@ -373,15 +441,15 @@ export default function CommentsDrawer({
             <div
               key={comment.id}
               style={{
-                borderRadius: "10px",
+                borderRadius: "12px",
                 border: "1px solid var(--border-color)",
                 backgroundColor: comment.is_resolved ? "var(--bg-primary)" : "var(--bg-surface)",
-                padding: "0.85rem",
+                padding: "0.9rem",
                 boxShadow: "0 1px 3px rgba(0,0,0,0.04)"
               }}
             >
               {/* Comment Header */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.4rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.45rem" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.45rem" }}>
                   <div style={{
                     width: "24px",
@@ -442,16 +510,16 @@ export default function CommentsDrawer({
                   fontSize: "0.75rem",
                   color: "#854d0e",
                   fontStyle: "italic",
-                  marginBottom: "0.4rem",
+                  marginBottom: "0.45rem",
                   borderLeft: "2px solid #eab308"
                 }}>
                   "{comment.selected_text}"
                 </div>
               )}
 
-              {/* Comment Body */}
+              {/* Comment Body with Highlighted Mentions */}
               <div style={{ fontSize: "0.875rem", color: comment.is_resolved ? "var(--text-secondary)" : "var(--text-primary)", lineHeight: "1.5", marginBottom: "0.6rem" }}>
-                {comment.content}
+                {renderHighlightedText(comment.content)}
               </div>
 
               {/* Threaded Replies */}
@@ -462,7 +530,7 @@ export default function CommentsDrawer({
                       <span style={{ fontWeight: "700", color: "var(--text-primary)" }}>
                         {reply.user?.full_name || "Member"}:
                       </span>{" "}
-                      <span style={{ color: "var(--text-secondary)" }}>{reply.content}</span>
+                      <span style={{ color: "var(--text-secondary)" }}>{renderHighlightedText(reply.content)}</span>
                     </div>
                   ))}
                 </div>
@@ -471,6 +539,7 @@ export default function CommentsDrawer({
               {/* Reply Input */}
               <div style={{ display: "flex", gap: "0.35rem", marginTop: "0.4rem" }}>
                 <input
+                  ref={(el) => (replyInputRefs.current[comment.id] = el)}
                   type="text"
                   placeholder="Reply or @mention..."
                   value={replyTexts[comment.id] || ""}
@@ -478,10 +547,10 @@ export default function CommentsDrawer({
                   onKeyDown={(e) => e.key === "Enter" && handleSendReply(comment.id)}
                   style={{
                     flex: 1,
-                    padding: "0.3rem 0.5rem",
+                    padding: "0.35rem 0.55rem",
                     borderRadius: "6px",
                     border: "1px solid var(--border-color)",
-                    backgroundColor: "var(--bg-surface)",
+                    backgroundColor: "var(--input-bg)",
                     color: "var(--text-primary)",
                     fontSize: "0.75rem",
                     outline: "none"
@@ -490,7 +559,7 @@ export default function CommentsDrawer({
                 <button
                   onClick={() => handleSendReply(comment.id)}
                   style={{
-                    padding: "0.3rem 0.5rem",
+                    padding: "0.35rem 0.55rem",
                     borderRadius: "6px",
                     border: "none",
                     backgroundColor: "#eff6ff",

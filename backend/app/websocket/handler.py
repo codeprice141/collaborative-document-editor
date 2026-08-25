@@ -1,32 +1,35 @@
 import json
-import time
 import logging
+import time
 from typing import Optional
 from fastapi import WebSocket, WebSocketDisconnect
 from sqlalchemy.orm import Session
 
-from app.core.security import decode_access_token
-from app.core.rate_limiter import ws_rate_limiter
 from app.core.metrics import metrics
 from app.models.user import User
-from app.models.document import Document, CollaboratorRole
+from app.models.document import CollaboratorRole
 from app.services.document_service import DocumentService
-from app.services.sync_engine import sync_engine
-from app.services.presence_service import presence_service
-from app.services.write_behind_buffer import write_buffer
+from app.services.auth_service import AuthService
 from app.websocket.connection_manager import manager
+from app.websocket.presence_service import presence_service
+from app.websocket.sync_engine import sync_engine
+from app.websocket.rate_limiter import ws_rate_limiter
+from app.services.write_behind_buffer import write_buffer
 
 logger = logging.getLogger(__name__)
 
 
 def authenticate_ws_token(token: str, db: Session) -> Optional[User]:
-    payload = decode_access_token(token)
-    if not payload:
+    """Decodes JWT token and validates active user for WebSocket handshake."""
+    try:
+        user_id = AuthService.decode_token(token)
+        if not user_id:
+            return None
+        user = db.query(User).filter(User.id == int(user_id)).first()
+        return user if user and user.is_active else None
+    except Exception as exc:
+        logger.warning("WebSocket token verification failed: %s", exc)
         return None
-    user_id = payload.get("sub")
-    if not user_id:
-        return None
-    return db.query(User).filter(User.id == int(user_id)).first()
 
 
 async def handle_websocket_connection(
@@ -51,11 +54,13 @@ async def handle_websocket_connection(
 
         # 2. Check document permissions
         doc, role = DocumentService.get_document_with_access(db, document_id, user.id)
-        if not doc:
+        if not doc or not role:
             await websocket.accept()
             await websocket.send_json({"type": "error", "message": "Document not found or permission denied"})
             await websocket.close(code=4003)
             return
+
+        role_enum = CollaboratorRole(role) if not isinstance(role, CollaboratorRole) else role
 
         # 3. Accept connection and record telemetry
         await manager.connect(document_id, client_id, websocket)
@@ -78,7 +83,7 @@ async def handle_websocket_connection(
             "content": doc.content,
             "drawing_data": doc.drawing_data or "[]",
             "version": doc.version,
-            "user_role": role.value,
+            "user_role": role_enum.value,
             "user_color": user_presence.color,
             "vector_clock": sync_engine.get_vector_clock(document_id),
             "active_users": presence_service.get_room_presence(document_id),
@@ -123,7 +128,7 @@ async def handle_websocket_connection(
 
             # --- Collaborative Edit Operation (OT & Vector Clocks) ---
             elif msg_type == "operation":
-                if role == CollaboratorRole.VIEWER:
+                if role_enum == CollaboratorRole.VIEWER:
                     await manager.send_personal_message(
                         {"type": "error", "message": "Viewers cannot edit document"}, websocket
                     )
@@ -173,7 +178,7 @@ async def handle_websocket_connection(
 
             # --- Whiteboard Live Drawing & Vector Shapes (with persistence!) ---
             elif msg_type == "draw":
-                if role == CollaboratorRole.VIEWER:
+                if role_enum == CollaboratorRole.VIEWER:
                     await manager.send_personal_message(
                         {"type": "error", "message": "Viewers cannot draw on document"}, websocket
                     )
@@ -228,6 +233,22 @@ async def handle_websocket_connection(
                         },
                         exclude_client_id=client_id,
                     )
+
+            # --- Real-Time Comment & Mention Events ---
+            elif msg_type == "comment_event":
+                await manager.broadcast_to_room(
+                    document_id,
+                    {
+                        "type": "comment_broadcast",
+                        "action": msg.get("action", "created"),
+                        "comment": msg.get("comment"),
+                        "sender_name": user.full_name,
+                        "sender_id": user.id,
+                        "mentioned_emails": msg.get("mentioned_emails", []),
+                        "mentioned_names": msg.get("mentioned_names", []),
+                    },
+                    exclude_client_id=client_id,
+                )
 
             # --- Reconnect Recovery Request ---
             elif msg_type == "sync_request":
