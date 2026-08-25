@@ -31,7 +31,7 @@ export default function EditorPage() {
   const { id } = useParams();
   const docId = parseInt(id, 10);
   const { user: currentUser } = useAuth();
-  const { theme, toggleTheme, isDark } = useTheme();
+  const { toggleTheme, isDark } = useTheme();
 
   const [docMeta, setDocMeta] = useState(null);
   const [title, setTitle] = useState("");
@@ -83,7 +83,6 @@ export default function EditorPage() {
 
   const handleRemoteComment = (data) => {
     setIncomingCommentEvent(data);
-    // Check if current user was mentioned by someone else
     if (data.sender_id !== currentUser?.id) {
       const myName = currentUser?.full_name?.toLowerCase();
       const myEmail = currentUser?.email?.toLowerCase();
@@ -189,7 +188,7 @@ export default function EditorPage() {
         </div>
       )}
 
-      {/* Modern High-End Top Header */}
+      {/* Modern High-End Top Header (Single-line 56px, Zero Wrapping) */}
       <header style={{
         backgroundColor: "var(--bg-surface)",
         borderBottom: "1px solid var(--border-color)",
@@ -198,7 +197,7 @@ export default function EditorPage() {
         justifyContent: "space-between",
         alignItems: "center",
         zIndex: 30,
-        height: "58px",
+        height: "56px",
         flexShrink: 0
       }}>
         {/* Left: Back & Editable Title */}
@@ -214,13 +213,13 @@ export default function EditorPage() {
               borderRadius: "8px",
               textDecoration: "none"
             }}
-            title="Back to Documents"
+            title="Back to Dashboard"
           >
             <ArrowLeft size={18} />
           </Link>
 
           <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", minWidth: 0 }}>
-            <FileEdit size={16} color="#2563eb" style={{ flexShrink: 0 }} />
+            <FileEdit size={16} color="var(--accent-color)" style={{ flexShrink: 0 }} />
             <input
               type="text"
               value={title}
@@ -229,24 +228,23 @@ export default function EditorPage() {
               onBlur={(e) => saveTitle(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && e.target.blur()}
               placeholder="Untitled Document"
-              title="Click to rename"
+              title="Click to rename document"
               style={{
-                fontSize: "1rem",
+                fontSize: "0.95rem",
                 fontWeight: "700",
                 color: "var(--text-primary)",
                 border: "1px solid transparent",
                 background: "transparent",
                 outline: "none",
-                width: "clamp(100px, 18vw, 220px)",
+                width: "clamp(110px, 20vw, 220px)",
                 padding: "2px 6px",
                 borderRadius: "6px",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
                 whiteSpace: "nowrap",
-                fontFamily: "inherit",
                 letterSpacing: "-0.01em"
               }}
-              onFocus={(e) => e.target.style.borderColor = "#93c5fd"}
+              onFocus={(e) => e.target.style.borderColor = "var(--input-focus)"}
             />
             {titleSaved && (
               <span className="hidden-mobile" style={{ display: "flex", alignItems: "center", gap: "0.2rem", fontSize: "0.75rem", color: "#16a34a", fontWeight: "600", flexShrink: 0 }}>
@@ -275,16 +273,16 @@ export default function EditorPage() {
               borderRadius: "8px",
               border: "none",
               backgroundColor: activeTab === "text" ? "var(--bg-surface)" : "transparent",
-              color: activeTab === "text" ? "#2563eb" : "var(--text-secondary)",
+              color: activeTab === "text" ? "var(--accent-color)" : "var(--text-secondary)",
               fontWeight: "700",
               fontSize: "0.8125rem",
               cursor: "pointer",
-              boxShadow: activeTab === "text" ? "0 2px 5px rgba(0,0,0,0.06)" : "none",
+              boxShadow: activeTab === "text" ? "var(--shadow-sm)" : "none",
               transition: "all 0.15s ease"
             }}
           >
             <FileText size={15} />
-            <span>Editor</span>
+            <span>Document</span>
           </button>
           <button
             onClick={() => setActiveTab("canvas")}
@@ -296,16 +294,16 @@ export default function EditorPage() {
               borderRadius: "8px",
               border: "none",
               backgroundColor: activeTab === "canvas" ? "var(--bg-surface)" : "transparent",
-              color: activeTab === "canvas" ? "#2563eb" : "var(--text-secondary)",
+              color: activeTab === "canvas" ? "var(--accent-color)" : "var(--text-secondary)",
               fontWeight: "700",
               fontSize: "0.8125rem",
               cursor: "pointer",
-              boxShadow: activeTab === "canvas" ? "0 2px 5px rgba(0,0,0,0.06)" : "none",
+              boxShadow: activeTab === "canvas" ? "var(--shadow-sm)" : "none",
               transition: "all 0.15s ease"
             }}
           >
             <Palette size={15} />
-            <span>Canvas</span>
+            <span>Whiteboard</span>
           </button>
         </div>
 
@@ -340,8 +338,8 @@ export default function EditorPage() {
               padding: "0.4rem 0.65rem",
               borderRadius: "8px",
               border: "1px solid var(--border-color)",
-              backgroundColor: showComments ? "#eff6ff" : "var(--bg-surface)",
-              color: showComments ? "#2563eb" : "var(--text-secondary)",
+              backgroundColor: showComments ? "var(--accent-glow)" : "var(--bg-surface)",
+              color: showComments ? "var(--accent-color)" : "var(--text-secondary)",
               fontSize: "0.8125rem",
               cursor: "pointer",
               fontWeight: "600"
@@ -407,12 +405,12 @@ export default function EditorPage() {
                 padding: "0.4rem 0.75rem",
                 borderRadius: "8px",
                 border: "none",
-                backgroundColor: "#2563eb",
+                backgroundColor: "var(--accent-color)",
                 color: "#ffffff",
                 fontSize: "0.8125rem",
                 fontWeight: "700",
                 cursor: "pointer",
-                boxShadow: "0 2px 4px rgba(37, 99, 235, 0.25)"
+                boxShadow: "0 2px 4px rgba(59, 130, 246, 0.25)"
               }}
             >
               <Share2 size={15} />

@@ -1,56 +1,124 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
 :root {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-  color-scheme: light dark;
-  --bg-primary: #f1f5f9;
+  /* Light Theme - Modern SaaS Palette */
+  --bg-primary: #f8fafc;
   --bg-surface: #ffffff;
-  --bg-surface-glass: rgba(255, 255, 255, 0.95);
-  --border-color: #cbd5e1;
+  --bg-surface-glass: rgba(255, 255, 255, 0.92);
+  --border-color: #e2e8f0;
+  --border-strong: #cbd5e1;
+  
   --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --accent-color: #2563eb;
-  --accent-hover: #1d4ed8;
+  --text-secondary: #64748b;
+  --text-tertiary: #94a3b8;
+  
+  --accent-color: #3b82f6;
+  --accent-hover: #2563eb;
+  --accent-glow: rgba(59, 130, 246, 0.15);
+  
   --input-bg: #ffffff;
+  --input-border: #cbd5e1;
+  --input-focus: #3b82f6;
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 12px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 12px 32px -4px rgba(0, 0, 0, 0.12), 0 4px 12px -2px rgba(0, 0, 0, 0.06);
+
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
 }
 
 [data-theme="dark"] {
+  /* Dark Theme - High-Contrast Dark Mode */
   --bg-primary: #090d16;
-  --bg-surface: #131b2e;
-  --bg-surface-glass: rgba(19, 27, 46, 0.95);
-  --border-color: #2a3b5c;
+  --bg-surface: #111827;
+  --bg-surface-glass: rgba(17, 24, 39, 0.92);
+  --border-color: #1f293d;
+  --border-strong: #334155;
+  
   --text-primary: #f8fafc;
   --text-secondary: #94a3b8;
-  --accent-color: #3b82f6;
-  --accent-hover: #60a5fa;
-  --input-bg: #1a243a;
+  --text-tertiary: #64748b;
+  
+  --accent-color: #6366f1;
+  --accent-hover: #4f46e5;
+  --accent-glow: rgba(99, 102, 241, 0.25);
+  
+  --input-bg: #1a2333;
+  --input-border: #2a374a;
+  --input-focus: #6366f1;
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px -1px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 32px -4px rgba(0, 0, 0, 0.6);
 }
 
 * {
-  box-sizing: border-box;
   margin: 0;
   padding: 0;
+  box-sizing: border-box;
 }
 
 body {
-  margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
+  font-family: var(--font-sans);
   background-color: var(--bg-primary);
   color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
   overflow-x: hidden;
 }
 
-/* Form Input & Select Global Styling for Crisp Contrast */
+/* Custom Sleek Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
+}
+
+/* Inputs & Form Controls */
 input, select, textarea {
+  font-family: var(--font-sans);
   background-color: var(--input-bg);
   color: var(--text-primary);
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--input-border);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--input-focus);
+  box-shadow: 0 0 0 3px var(--accent-glow);
 }
 
 select option {
   background-color: var(--bg-surface);
   color: var(--text-primary);
+}
+
+/* Mention Tag in Comments */
+.mention-tag {
+  display: inline-block;
+  background-color: #dbeafe;
+  color: #1e40af;
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 0.85em;
+  margin: 0 2px;
+}
+
+[data-theme="dark"] .mention-tag {
+  background-color: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
 }
 
 /* Responsive Utilities */
@@ -61,6 +129,13 @@ select option {
   .mobile-full {
     width: 100% !important;
   }
+  .mobile-bottom-sheet {
+    max-width: 100% !important;
+    border-radius: 20px 20px 0 0 !important;
+    top: auto !important;
+    bottom: 0 !important;
+    max-height: 80vh !important;
+  }
 }
 
 @media (min-width: 641px) {
@@ -69,7 +144,7 @@ select option {
   }
 }
 
-/* Rich Document Typography inside White Paper */
+/* Rich Document Typography inside White Paper Sheet */
 .rich-document-body {
   outline: none;
   min-height: 800px;
@@ -82,68 +157,73 @@ select option {
 }
 
 .rich-document-body h1 {
-  font-size: 2.1rem;
+  font-size: 2.2rem;
   font-weight: 800;
-  margin: 1.25rem 0 0.75rem 0;
+  margin: 1.5rem 0 0.75rem 0;
   line-height: 1.25;
   color: var(--text-primary);
+  letter-spacing: -0.02em;
 }
 
 .rich-document-body h2 {
-  font-size: 1.55rem;
+  font-size: 1.6rem;
   font-weight: 700;
-  margin: 1rem 0 0.5rem 0;
+  margin: 1.25rem 0 0.5rem 0;
   line-height: 1.3;
   color: var(--text-primary);
+  letter-spacing: -0.01em;
 }
 
 .rich-document-body h3 {
-  font-size: 1.25rem;
+  font-size: 1.3rem;
   font-weight: 600;
-  margin: 0.75rem 0 0.35rem 0;
+  margin: 1rem 0 0.35rem 0;
   color: var(--text-primary);
 }
 
 .rich-document-body p {
-  margin: 0.5rem 0;
+  margin: 0.6rem 0;
 }
 
 .rich-document-body blockquote {
   border-left: 4px solid var(--accent-color);
   margin: 1rem 0;
-  padding: 0.5rem 0 0.5rem 1.25rem;
+  padding: 0.6rem 0 0.6rem 1.25rem;
   color: var(--text-secondary);
   font-style: italic;
-  background: rgba(37, 99, 235, 0.05);
+  background: var(--accent-glow);
   border-radius: 0 8px 8px 0;
 }
 
 .rich-document-body pre {
-  background: rgba(100, 116, 139, 0.12);
-  border-radius: 8px;
-  padding: 0.85rem 1.15rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  background: #0f172a;
+  color: #f8fafc;
+  padding: 1rem;
+  border-radius: 10px;
+  font-family: var(--font-mono);
   font-size: 0.9rem;
-  margin: 0.85rem 0;
+  margin: 1rem 0;
   overflow-x: auto;
-  border: 1px solid var(--border-color);
 }
 
-.rich-document-body ul,
-.rich-document-body ol {
-  margin: 0.5rem 0 0.5rem 1.75rem;
+.rich-document-body code {
+  background: rgba(100, 116, 139, 0.15);
+  color: var(--accent-color);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+.rich-document-body ul, .rich-document-body ol {
+  margin: 0.5rem 0 0.5rem 1.5rem;
 }
 
 .rich-document-body li {
-  margin-bottom: 0.35rem;
+  margin: 0.25rem 0;
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: scale(0.97); }
-  to { opacity: 1; transform: scale(1); }
-}
-
-@keyframes slideInUp {
-  from { opacity: 0; transform: translateY(12px); }
+  from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }

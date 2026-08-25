@@ -3,11 +3,11 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import ConfirmModal from "./ConfirmModal";
-import { Layers, LogOut, Sun, Moon } from "lucide-react";
+import { Layers, LogOut, Sun, Moon, Sparkles } from "lucide-react";
 
 export default function Navbar() {
   const { user, logout } = useAuth();
-  const { theme, toggleTheme, isDark } = useTheme();
+  const { toggleTheme, isDark } = useTheme();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const navigate = useNavigate();
 
@@ -21,55 +21,60 @@ export default function Navbar() {
       <header style={{
         backgroundColor: "var(--bg-surface)",
         borderBottom: "1px solid var(--border-color)",
-        padding: "0.75rem 1.25rem",
+        padding: "0.75rem 1.5rem",
         display: "flex",
         justifyContent: "space-between",
-        alignItems: "center"
+        alignItems: "center",
+        boxShadow: "var(--shadow-sm)"
       }}>
-        {/* Brand Logo */}
+        {/* Brand Logo & SaaS Name */}
         <Link
           to="/dashboard"
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "0.6rem",
+            gap: "0.65rem",
             textDecoration: "none",
             color: "var(--text-primary)"
           }}
         >
           <div style={{
-            width: "34px",
-            height: "34px",
+            width: "36px",
+            height: "36px",
             borderRadius: "10px",
-            backgroundColor: "#2563eb",
+            background: "linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)",
             color: "#ffffff",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            boxShadow: "0 4px 10px -2px rgba(37, 99, 235, 0.3)"
+            boxShadow: "0 4px 12px -2px rgba(59, 130, 246, 0.35)"
           }}>
-            <Layers size={18} />
+            <Layers size={19} />
           </div>
-          <span style={{ fontWeight: "800", fontSize: "1.05rem", letterSpacing: "-0.02em", color: "var(--text-primary)" }}>
-            CollabEditor
-          </span>
+          <div>
+            <div style={{ fontWeight: "800", fontSize: "1.15rem", letterSpacing: "-0.03em", color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "0.3rem" }}>
+              <span>AetherDoc</span>
+              <span style={{ fontSize: "0.65rem", padding: "1px 5px", borderRadius: "4px", backgroundColor: "var(--accent-glow)", color: "var(--accent-color)", fontWeight: "700" }}>PRO</span>
+            </div>
+          </div>
         </Link>
 
         {/* Actions: Theme Toggle & User Profile */}
-        <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
           {/* Theme Toggle Button */}
           <button
             onClick={toggleTheme}
             style={{
-              padding: "0.4rem",
-              borderRadius: "8px",
+              padding: "0.45rem",
+              borderRadius: "9px",
               border: "1px solid var(--border-color)",
               backgroundColor: "var(--bg-surface)",
               color: "var(--text-secondary)",
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
-              justifyContent: "center"
+              justifyContent: "center",
+              transition: "all 0.15s ease"
             }}
             title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
           >
@@ -77,12 +82,12 @@ export default function Navbar() {
           </button>
 
           {user && (
-            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.65rem" }}>
               <div style={{
                 display: "flex",
                 alignItems: "center",
-                gap: "0.4rem",
-                padding: "0.25rem 0.55rem",
+                gap: "0.45rem",
+                padding: "0.3rem 0.65rem",
                 borderRadius: "9999px",
                 backgroundColor: "var(--bg-primary)",
                 border: "1px solid var(--border-color)"
@@ -91,7 +96,7 @@ export default function Navbar() {
                   width: "24px",
                   height: "24px",
                   borderRadius: "50%",
-                  backgroundColor: "#3b82f6",
+                  backgroundColor: "var(--accent-color)",
                   color: "#ffffff",
                   display: "flex",
                   alignItems: "center",
@@ -112,8 +117,8 @@ export default function Navbar() {
                   display: "flex",
                   alignItems: "center",
                   gap: "0.35rem",
-                  padding: "0.4rem 0.65rem",
-                  borderRadius: "8px",
+                  padding: "0.45rem 0.75rem",
+                  borderRadius: "9px",
                   border: "1px solid var(--border-color)",
                   backgroundColor: "var(--bg-surface)",
                   color: "var(--text-secondary)",
@@ -124,6 +129,7 @@ export default function Navbar() {
                 title="Logout"
               >
                 <LogOut size={15} />
+                <span className="hidden-mobile">Sign Out</span>
               </button>
             </div>
           )}
@@ -133,9 +139,9 @@ export default function Navbar() {
       {/* Logout Confirmation Modal */}
       <ConfirmModal
         isOpen={showLogoutConfirm}
-        title="Sign Out of CollabEditor?"
-        message="Are you sure you want to log out of your account? Your documents and active edits are safely saved."
-        confirmText="Log Out"
+        title="Sign Out of AetherDoc?"
+        message="Are you sure you want to sign out? Your document edits and real-time state are safely persisted."
+        confirmText="Sign Out"
         type="danger"
         onConfirm={handleLogout}
         onCancel={() => setShowLogoutConfirm(false)}

@@ -4,338 +4,415 @@ import { api } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import Navbar from "../components/Navbar";
 import ConfirmModal from "../components/ConfirmModal";
-import PromptModal from "../components/PromptModal";
 import {
-  Plus,
   FileText,
-  Clock,
+  Plus,
   Trash2,
-  Lock,
-  Globe,
   Users,
   Search,
-  FolderOpen,
-  Sparkles
+  Globe,
+  Lock,
+  Clock,
+  FolderOpen
 } from "lucide-react";
 
 export default function DashboardPage() {
-  const { user } = useAuth();
-  const navigate = useNavigate();
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterTab, setFilterTab] = useState("all"); // "all" | "owned" | "shared"
+  const [activeFilter, setActiveFilter] = useState("all");
+  const [deleteDocTarget, setDeleteDocTarget] = useState(null);
+  const [creating, setCreating] = useState(false);
 
-  // Modals state
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [docToDelete, setDocToDelete] = useState(null);
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
-  const fetchDocs = async () => {
+  const fetchDocuments = async () => {
     try {
+      setLoading(true);
       const data = await api.getDocuments();
       setDocuments(data);
     } catch (err) {
-      console.error(err);
+      console.error("Failed to load documents", err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchDocs();
+    fetchDocuments();
   }, []);
 
-  const handleCreateDocument = async (title) => {
-    if (!title || !title.trim()) return;
+  const handleCreateNew = async () => {
     try {
-      const newDoc = await api.createDocument(title.trim(), "<p>Start typing your document...</p>");
+      setCreating(true);
+      const newDoc = await api.createDocument("Untitled Document");
       navigate(`/documents/${newDoc.id}`);
     } catch (err) {
-      console.error("Failed to create doc", err);
+      console.error("Failed to create document", err);
+    } finally {
+      setCreating(false);
     }
   };
 
   const handleConfirmDelete = async () => {
-    if (!docToDelete) return;
+    if (!deleteDocTarget) return;
     try {
-      await api.deleteDocument(docToDelete.id);
-      setDocuments((prev) => prev.filter((d) => d.id !== docToDelete.id));
-      setDocToDelete(null);
+      await api.deleteDocument(deleteDocTarget.id);
+      setDocuments((prev) => prev.filter((d) => d.id !== deleteDocTarget.id));
+      setDeleteDocTarget(null);
     } catch (err) {
-      console.error("Failed to delete doc", err);
+      console.error("Failed to delete document", err);
     }
   };
 
-  const filteredDocs = documents.filter((doc) => {
-    const matchesQuery = doc.title?.toLowerCase().includes(searchQuery.toLowerCase());
-    if (!matchesQuery) return false;
-    if (filterTab === "owned") return doc.user_role === "owner";
-    if (filterTab === "shared") return doc.user_role !== "owner";
+  const formatRelativeTime = (dateString) => {
+    if (!dateString) return "Recently";
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffSec = Math.floor((now - date) / 1000);
+
+    if (diffSec < 60) return "Just now";
+    if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
+    if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
+    if (diffSec < 604800) return `${Math.floor(diffSec / 86400)}d ago`;
+    return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  };
+
+  const filteredDocuments = documents.filter((doc) => {
+    const matchesSearch = doc.title?.toLowerCase().includes(searchQuery.toLowerCase());
+    if (!matchesSearch) return false;
+
+    if (activeFilter === "owned") return doc.user_role === "owner";
+    if (activeFilter === "shared") return doc.user_role !== "owner";
     return true;
   });
 
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "var(--bg-primary)", display: "flex", flexDirection: "column" }}>
+    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", backgroundColor: "var(--bg-primary)" }}>
       <Navbar />
 
-      <main style={{ maxWidth: "1100px", width: "100%", margin: "0 auto", padding: "1.75rem 1.25rem", flex: 1 }}>
-        {/* Top Header Banner */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", flexWrap: "wrap", gap: "0.75rem" }}>
+      <main style={{ flex: 1, maxWidth: "1200px", width: "100%", margin: "0 auto", padding: "2rem 1.5rem" }}>
+        {/* Top Header & New Document Button */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem", flexWrap: "wrap", gap: "1rem" }}>
           <div>
-            <h1 style={{ fontSize: "1.6rem", fontWeight: "800", color: "var(--text-primary)", letterSpacing: "-0.02em" }}>
-              Welcome back, {user?.full_name?.split(" ")[0]} 👋
+            <h1 style={{ fontSize: "1.75rem", fontWeight: "800", color: "var(--text-primary)", letterSpacing: "-0.03em" }}>
+              Workspaces & Documents
             </h1>
-            <p style={{ fontSize: "0.875rem", color: "var(--text-secondary)", marginTop: "0.2rem" }}>
-              Create, collaborate, and brainstorm in real-time
+            <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", marginTop: "0.2rem" }}>
+              Collaborate in real time on text documents and interactive whiteboards.
             </p>
           </div>
 
           <button
-            onClick={() => setShowCreateModal(true)}
+            onClick={handleCreateNew}
+            disabled={creating}
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "0.4rem",
-              padding: "0.6rem 1.15rem",
-              borderRadius: "10px",
-              border: "none",
-              backgroundColor: "#2563eb",
+              gap: "0.5rem",
+              padding: "0.7rem 1.25rem",
+              backgroundColor: "var(--accent-color)",
               color: "#ffffff",
+              border: "none",
+              borderRadius: "10px",
               fontWeight: "700",
-              fontSize: "0.875rem",
+              fontSize: "0.9rem",
               cursor: "pointer",
-              boxShadow: "0 4px 12px rgba(37, 99, 235, 0.25)"
+              boxShadow: "0 4px 14px -2px rgba(59, 130, 246, 0.35)"
             }}
           >
             <Plus size={18} />
-            <span>New Document</span>
+            <span>{creating ? "Creating..." : "New Document"}</span>
           </button>
         </div>
 
         {/* Search & Filter Controls */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", flexWrap: "wrap", gap: "0.75rem" }}>
           {/* Search Box */}
-          <div style={{ position: "relative", flex: "1 1 260px", maxWidth: "380px" }}>
-            <Search size={16} color="var(--text-secondary)" style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)" }} />
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+            backgroundColor: "var(--bg-surface)",
+            border: "1px solid var(--border-color)",
+            padding: "0.5rem 0.85rem",
+            borderRadius: "10px",
+            width: "100%",
+            maxWidth: "340px",
+            boxShadow: "var(--shadow-sm)"
+          }}>
+            <Search size={16} color="var(--text-secondary)" />
             <input
               type="text"
-              placeholder="Search documents by title..."
+              placeholder="Search documents..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{
+                border: "none",
+                background: "transparent",
+                outline: "none",
                 width: "100%",
-                padding: "0.55rem 0.75rem 0.55rem 2.2rem",
-                borderRadius: "10px",
-                fontSize: "0.875rem",
-                outline: "none"
+                fontSize: "0.875rem"
               }}
             />
           </div>
 
           {/* Filter Pills */}
-          <div style={{ display: "flex", gap: "0.35rem", backgroundColor: "var(--bg-surface)", padding: "3px", borderRadius: "10px", border: "1px solid var(--border-color)" }}>
-            <button
-              onClick={() => setFilterTab("all")}
-              style={{
-                padding: "0.3rem 0.75rem", borderRadius: "7px", border: "none",
-                backgroundColor: filterTab === "all" ? "#2563eb" : "transparent",
-                color: filterTab === "all" ? "#ffffff" : "var(--text-secondary)",
-                fontSize: "0.8125rem", fontWeight: "600", cursor: "pointer"
-              }}
-            >
-              All ({documents.length})
-            </button>
-            <button
-              onClick={() => setFilterTab("owned")}
-              style={{
-                padding: "0.3rem 0.75rem", borderRadius: "7px", border: "none",
-                backgroundColor: filterTab === "owned" ? "#2563eb" : "transparent",
-                color: filterTab === "owned" ? "#ffffff" : "var(--text-secondary)",
-                fontSize: "0.8125rem", fontWeight: "600", cursor: "pointer"
-              }}
-            >
-              Owned by Me
-            </button>
-            <button
-              onClick={() => setFilterTab("shared")}
-              style={{
-                padding: "0.3rem 0.75rem", borderRadius: "7px", border: "none",
-                backgroundColor: filterTab === "shared" ? "#2563eb" : "transparent",
-                color: filterTab === "shared" ? "#ffffff" : "var(--text-secondary)",
-                fontSize: "0.8125rem", fontWeight: "600", cursor: "pointer"
-              }}
-            >
-              Shared with Me
-            </button>
+          <div style={{
+            display: "flex",
+            backgroundColor: "var(--bg-surface)",
+            padding: "3px",
+            borderRadius: "10px",
+            border: "1px solid var(--border-color)",
+            boxShadow: "var(--shadow-sm)"
+          }}>
+            {[
+              { id: "all", label: "All Docs" },
+              { id: "owned", label: "Owned by Me" },
+              { id: "shared", label: "Shared with Me" }
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveFilter(tab.id)}
+                style={{
+                  padding: "0.35rem 0.85rem",
+                  borderRadius: "8px",
+                  border: "none",
+                  backgroundColor: activeFilter === tab.id ? "var(--accent-glow)" : "transparent",
+                  color: activeFilter === tab.id ? "var(--accent-color)" : "var(--text-secondary)",
+                  fontWeight: activeFilter === tab.id ? "700" : "500",
+                  fontSize: "0.8125rem",
+                  cursor: "pointer"
+                }}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
         </div>
 
         {/* Documents Grid */}
         {loading ? (
-          <div style={{ textAlign: "center", padding: "4rem", color: "var(--text-secondary)" }}>
-            Loading your documents...
+          <div style={{ textAlign: "center", padding: "4rem 1rem", color: "var(--text-secondary)" }}>
+            Loading your workspaces...
           </div>
-        ) : filteredDocs.length === 0 ? (
+        ) : filteredDocuments.length === 0 ? (
           <div style={{
-            backgroundColor: "var(--bg-surface)",
-            borderRadius: "16px",
-            border: "1px dashed var(--border-color)",
-            padding: "4rem 2rem",
             textAlign: "center",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: "1rem"
+            padding: "4.5rem 1.5rem",
+            backgroundColor: "var(--bg-surface)",
+            borderRadius: "18px",
+            border: "1px dashed var(--border-color)"
           }}>
-            <div style={{ padding: "1rem", borderRadius: "50%", backgroundColor: "var(--bg-primary)", color: "#2563eb" }}>
-              <FolderOpen size={36} />
+            <div style={{
+              width: "48px",
+              height: "48px",
+              borderRadius: "12px",
+              backgroundColor: "var(--accent-glow)",
+              color: "var(--accent-color)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              margin: "0 auto 1rem auto"
+            }}>
+              <FolderOpen size={24} />
             </div>
-            <div>
-              <h3 style={{ fontSize: "1.125rem", fontWeight: "700", color: "var(--text-primary)" }}>No documents found</h3>
-              <p style={{ fontSize: "0.875rem", color: "var(--text-secondary)", marginTop: "0.25rem" }}>
-                {searchQuery ? "No documents match your search query." : "Create your first document to start writing and collaborating!"}
-              </p>
-            </div>
+            <h3 style={{ fontSize: "1.15rem", fontWeight: "700", color: "var(--text-primary)", marginBottom: "0.25rem" }}>
+              No documents found
+            </h3>
+            <p style={{ fontSize: "0.875rem", color: "var(--text-secondary)", marginBottom: "1.25rem" }}>
+              {searchQuery ? "No matches for your search term." : "Create your first document to get started!"}
+            </p>
             {!searchQuery && (
               <button
-                onClick={() => setShowCreateModal(true)}
+                onClick={handleCreateNew}
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.4rem",
-                  padding: "0.55rem 1rem",
-                  borderRadius: "8px",
-                  border: "none",
-                  backgroundColor: "#2563eb",
+                  padding: "0.6rem 1.25rem",
+                  backgroundColor: "var(--accent-color)",
                   color: "#ffffff",
+                  border: "none",
+                  borderRadius: "8px",
                   fontWeight: "600",
-                  fontSize: "0.875rem",
-                  cursor: "pointer"
+                  cursor: "pointer",
+                  fontSize: "0.875rem"
                 }}
               >
-                <Plus size={16} />
-                <span>Create Document</span>
+                Create Document
               </button>
             )}
           </div>
         ) : (
           <div style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(290px, 1fr))",
-            gap: "1.1rem"
+            gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+            gap: "1.25rem"
           }}>
-            {filteredDocs.map((doc) => (
-              <div
-                key={doc.id}
-                style={{
-                  backgroundColor: "var(--bg-surface)",
-                  borderRadius: "14px",
-                  border: "1px solid var(--border-color)",
-                  padding: "1.2rem",
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "space-between",
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-                  position: "relative",
-                  transition: "transform 0.15s ease, box-shadow 0.15s ease"
-                }}
-              >
-                <div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.75rem" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                      <div style={{ padding: "0.45rem", borderRadius: "10px", backgroundColor: "#eff6ff", color: "#2563eb" }}>
-                        <FileText size={19} />
-                      </div>
-                      <div>
-                        <Link
-                          to={`/documents/${doc.id}`}
-                          style={{
-                            fontSize: "1.05rem",
+            {filteredDocuments.map((doc) => {
+              const isOwner = doc.user_role === "owner";
+              const collabCount = (doc.collaborators?.length || 0) + 1;
+
+              return (
+                <div
+                  key={doc.id}
+                  style={{
+                    backgroundColor: "var(--bg-surface)",
+                    borderRadius: "16px",
+                    border: "1px solid var(--border-color)",
+                    padding: "1.25rem",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "space-between",
+                    boxShadow: "var(--shadow-sm)",
+                    transition: "transform 0.15s ease, box-shadow 0.15s ease",
+                    position: "relative"
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = "translateY(-2px)";
+                    e.currentTarget.style.boxShadow = "var(--shadow-md)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.boxShadow = "var(--shadow-sm)";
+                  }}
+                >
+                  <div>
+                    {/* Card Top: Badges & Trash */}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.85rem" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                        {doc.is_public ? (
+                          <span style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.2rem",
+                            fontSize: "0.7rem",
                             fontWeight: "700",
-                            color: "var(--text-primary)",
-                            textDecoration: "none",
-                            display: "block",
-                            maxWidth: "180px",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                            letterSpacing: "-0.01em"
-                          }}
-                        >
-                          {doc.title || "Untitled Document"}
-                        </Link>
+                            padding: "2px 6px",
+                            borderRadius: "6px",
+                            backgroundColor: "#dcfce7",
+                            color: "#15803d"
+                          }}>
+                            <Globe size={11} /> Public
+                          </span>
+                        ) : (
+                          <span style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.2rem",
+                            fontSize: "0.7rem",
+                            fontWeight: "700",
+                            padding: "2px 6px",
+                            borderRadius: "6px",
+                            backgroundColor: "var(--bg-primary)",
+                            color: "var(--text-secondary)",
+                            border: "1px solid var(--border-color)"
+                          }}>
+                            <Lock size={11} /> Private
+                          </span>
+                        )}
+
+                        <span style={{
+                          fontSize: "0.7rem",
+                          fontWeight: "700",
+                          padding: "2px 6px",
+                          borderRadius: "6px",
+                          backgroundColor: isOwner ? "var(--accent-glow)" : "#fef3c7",
+                          color: isOwner ? "var(--accent-color)" : "#92400e"
+                        }}>
+                          {isOwner ? "Owner" : doc.user_role?.toUpperCase()}
+                        </span>
                       </div>
-                    </div>
 
-                    {doc.user_role === "owner" && (
-                      <button
-                        onClick={() => setDocToDelete(doc)}
-                        style={{ border: "none", background: "none", cursor: "pointer", color: "var(--text-secondary)", padding: "2px" }}
-                        title="Delete Document (Owner Only)"
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                <div style={{ borderTop: "1px solid var(--border-color)", paddingTop: "0.75rem", marginTop: "0.75rem" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", fontSize: "0.75rem", color: "var(--text-secondary)" }}>
-                      <Clock size={13} />
-                      <span>{new Date(doc.updated_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                    </div>
-
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
-                      {doc.is_public ? (
-                        <span style={{ fontSize: "0.7rem", color: "#16a34a", display: "flex", alignItems: "center", gap: "2px", fontWeight: "600" }}>
-                          <Globe size={12} /> Public
-                        </span>
-                      ) : (
-                        <span style={{ fontSize: "0.7rem", color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: "2px" }}>
-                          <Lock size={12} /> Private
-                        </span>
+                      {/* Owner-Only Delete Button */}
+                      {isOwner && (
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setDeleteDocTarget(doc);
+                          }}
+                          style={{
+                            border: "none",
+                            background: "transparent",
+                            cursor: "pointer",
+                            color: "var(--text-tertiary)",
+                            padding: "4px",
+                            borderRadius: "6px"
+                          }}
+                          title="Delete document (Owner only)"
+                          onMouseEnter={(e) => e.currentTarget.style.color = "#dc2626"}
+                          onMouseLeave={(e) => e.currentTarget.style.color = "var(--text-tertiary)"}
+                        >
+                          <Trash2 size={15} />
+                        </button>
                       )}
+                    </div>
 
-                      <span style={{
-                        fontSize: "0.7rem",
-                        padding: "0.15rem 0.5rem",
-                        borderRadius: "6px",
-                        backgroundColor: doc.user_role === "owner" ? "#dbeafe" : "#dcfce7",
-                        color: doc.user_role === "owner" ? "#1e40af" : "#166534",
-                        fontWeight: "700",
-                        textTransform: "capitalize"
-                      }}>
-                        {doc.user_role}
-                      </span>
+                    {/* Card Title Link */}
+                    <Link
+                      to={`/documents/${doc.id}`}
+                      style={{ textDecoration: "none", color: "inherit", display: "block" }}
+                    >
+                      <div style={{ display: "flex", alignItems: "flex-start", gap: "0.6rem", marginBottom: "0.6rem" }}>
+                        <div style={{
+                          padding: "0.5rem",
+                          borderRadius: "10px",
+                          backgroundColor: "var(--accent-glow)",
+                          color: "var(--accent-color)",
+                          flexShrink: 0
+                        }}>
+                          <FileText size={20} />
+                        </div>
+                        <h2 style={{
+                          fontSize: "1.05rem",
+                          fontWeight: "700",
+                          color: "var(--text-primary)",
+                          lineHeight: "1.35",
+                          letterSpacing: "-0.01em"
+                        }}>
+                          {doc.title || "Untitled Document"}
+                        </h2>
+                      </div>
+                    </Link>
+                  </div>
+
+                  {/* Card Bottom Meta: Collaborator count & time */}
+                  <div style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    borderTop: "1px solid var(--border-color)",
+                    paddingTop: "0.75rem",
+                    marginTop: "0.75rem",
+                    fontSize: "0.75rem",
+                    color: "var(--text-secondary)"
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                      <Users size={13} />
+                      <span>{collabCount} {collabCount === 1 ? "member" : "members"}</span>
+                    </div>
+
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+                      <Clock size={12} />
+                      <span>{formatRelativeTime(doc.updated_at)}</span>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </main>
 
-      {/* Prompt Modal for Creating Doc */}
-      <PromptModal
-        isOpen={showCreateModal}
-        title="Create New Document"
-        placeholder="Enter document title (e.g. Project Roadmap)..."
-        confirmText="Create Document"
-        onConfirm={handleCreateDocument}
-        onCancel={() => setShowCreateModal(false)}
-      />
-
-      {/* Confirm Modal for Deleting Doc */}
+      {/* Strict Owner Delete Confirmation Modal */}
       <ConfirmModal
-        isOpen={!!docToDelete}
+        isOpen={!!deleteDocTarget}
         title="Delete Document?"
-        message={`Are you sure you want to delete "${docToDelete?.title}"? Only you (the owner) can perform this action.`}
+        message={`Are you sure you want to delete "${deleteDocTarget?.title}"? This action cannot be undone and will remove access for all collaborators.`}
         confirmText="Delete Document"
         type="danger"
         onConfirm={handleConfirmDelete}
-        onCancel={() => setDocToDelete(null)}
+        onCancel={() => setDeleteDocTarget(null)}
       />
     </div>
   );

@@ -11,6 +11,11 @@ def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
 
 
+def get_password_hash(password: str) -> str:
+    """Alias for hash_password to support legacy / framework conventions."""
+    return hash_password(password)
+
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verifies a plaintext password against a bcrypt hash."""
     try:

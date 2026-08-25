@@ -213,26 +213,13 @@ export default function CommentsDrawer({
     }
   };
 
-  // Helper to render text with highlighted @mentions
   const renderHighlightedText = (text) => {
     if (!text) return "";
     const parts = text.split(/(@[a-zA-Z0-9_\s]+)/g);
     return parts.map((part, index) => {
       if (part.startsWith("@")) {
         return (
-          <span
-            key={index}
-            style={{
-              display: "inline-block",
-              backgroundColor: "#dbeafe",
-              color: "#1e40af",
-              padding: "1px 6px",
-              borderRadius: "6px",
-              fontWeight: "700",
-              fontSize: "0.85em",
-              margin: "0 2px"
-            }}
-          >
+          <span key={index} className="mention-tag">
             {part}
           </span>
         );
@@ -246,20 +233,23 @@ export default function CommentsDrawer({
     : comments;
 
   return (
-    <div style={{
-      position: "fixed",
-      top: 0,
-      right: 0,
-      bottom: 0,
-      width: "100%",
-      maxWidth: "390px",
-      backgroundColor: "var(--bg-surface)",
-      boxShadow: "-4px 0 25px rgba(0,0,0,0.15)",
-      zIndex: 50,
-      display: "flex",
-      flexDirection: "column",
-      borderLeft: "1px solid var(--border-color)"
-    }}>
+    <div
+      className="mobile-bottom-sheet"
+      style={{
+        position: "fixed",
+        top: 0,
+        right: 0,
+        bottom: 0,
+        width: "100%",
+        maxWidth: "400px",
+        backgroundColor: "var(--bg-surface)",
+        boxShadow: "var(--shadow-lg)",
+        zIndex: 50,
+        display: "flex",
+        flexDirection: "column",
+        borderLeft: "1px solid var(--border-color)"
+      }}
+    >
       {/* Drawer Header */}
       <div style={{
         padding: "1.1rem 1.25rem",
@@ -269,8 +259,8 @@ export default function CommentsDrawer({
         alignItems: "center"
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <MessageSquare size={19} color="#2563eb" />
-          <h3 style={{ fontSize: "1.05rem", fontWeight: "700", color: "var(--text-primary)" }}>Comments & Discussions</h3>
+          <MessageSquare size={19} color="var(--accent-color)" />
+          <h3 style={{ fontSize: "1.05rem", fontWeight: "700", color: "var(--text-primary)" }}>Comments & Threads</h3>
         </div>
         <button onClick={onClose} style={{ border: "none", background: "none", cursor: "pointer", color: "var(--text-secondary)" }}>
           <X size={18} />
@@ -288,8 +278,8 @@ export default function CommentsDrawer({
             fontSize: "0.8125rem",
             fontWeight: "600",
             cursor: "pointer",
-            backgroundColor: filter === "all" ? "#eff6ff" : "transparent",
-            color: filter === "all" ? "#2563eb" : "var(--text-secondary)"
+            backgroundColor: filter === "all" ? "var(--accent-glow)" : "transparent",
+            color: filter === "all" ? "var(--accent-color)" : "var(--text-secondary)"
           }}
         >
           All ({comments.length})
@@ -303,8 +293,8 @@ export default function CommentsDrawer({
             fontSize: "0.8125rem",
             fontWeight: "600",
             cursor: "pointer",
-            backgroundColor: filter === "open" ? "#eff6ff" : "transparent",
-            color: filter === "open" ? "#2563eb" : "var(--text-secondary)"
+            backgroundColor: filter === "open" ? "var(--accent-glow)" : "transparent",
+            color: filter === "open" ? "var(--accent-color)" : "var(--text-secondary)"
           }}
         >
           Open ({comments.filter((c) => !c.is_resolved).length})
@@ -320,10 +310,10 @@ export default function CommentsDrawer({
             gap: "0.4rem",
             padding: "0.35rem 0.6rem",
             borderRadius: "6px",
-            backgroundColor: "#fef9c3",
-            border: "1px solid #fef08a",
+            backgroundColor: "var(--accent-glow)",
+            border: "1px solid var(--accent-color)",
             fontSize: "0.75rem",
-            color: "#854d0e",
+            color: "var(--accent-color)",
             marginBottom: "0.6rem"
           }}>
             <Quote size={12} />
@@ -336,21 +326,17 @@ export default function CommentsDrawer({
         <form onSubmit={handleCreateComment} style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
           <textarea
             ref={textareaRef}
-            placeholder="Type comment or @mention a teammate..."
+            placeholder="Type a comment or @mention a teammate..."
             value={newCommentText}
             onChange={(e) => handleTextChange(e, "comment")}
             rows={2}
             style={{
               width: "100%",
-              padding: "0.55rem 0.75rem",
+              padding: "0.6rem 0.8rem",
               borderRadius: "8px",
-              border: "1px solid var(--border-color)",
-              backgroundColor: "var(--input-bg)",
-              color: "var(--text-primary)",
               fontSize: "0.875rem",
               outline: "none",
-              resize: "none",
-              fontFamily: "inherit"
+              resize: "none"
             }}
           />
 
@@ -364,7 +350,7 @@ export default function CommentsDrawer({
               backgroundColor: "var(--bg-surface)",
               border: "1px solid var(--border-color)",
               borderRadius: "10px",
-              boxShadow: "0 10px 20px rgba(0,0,0,0.15)",
+              boxShadow: "var(--shadow-lg)",
               maxHeight: "160px",
               overflowY: "auto",
               zIndex: 60,
@@ -385,10 +371,10 @@ export default function CommentsDrawer({
                     alignItems: "center",
                     gap: "0.5rem"
                   }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#eff6ff"}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "var(--accent-glow)"}
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
                 >
-                  <div style={{ width: "22px", height: "22px", borderRadius: "50%", backgroundColor: "#3b82f6", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.7rem", fontWeight: "700" }}>
+                  <div style={{ width: "22px", height: "22px", borderRadius: "50%", backgroundColor: "var(--accent-color)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.7rem", fontWeight: "700" }}>
                     {u.full_name?.charAt(0) || "U"}
                   </div>
                   <div>
@@ -413,10 +399,10 @@ export default function CommentsDrawer({
                 display: "flex",
                 alignItems: "center",
                 gap: "0.35rem",
-                padding: "0.35rem 0.85rem",
-                borderRadius: "6px",
+                padding: "0.4rem 0.9rem",
+                borderRadius: "7px",
                 border: "none",
-                backgroundColor: newCommentText.trim() ? "#2563eb" : "#94a3b8",
+                backgroundColor: newCommentText.trim() ? "var(--accent-color)" : "var(--border-strong)",
                 color: "#ffffff",
                 fontSize: "0.8125rem",
                 fontWeight: "600",
@@ -445,7 +431,7 @@ export default function CommentsDrawer({
                 border: "1px solid var(--border-color)",
                 backgroundColor: comment.is_resolved ? "var(--bg-primary)" : "var(--bg-surface)",
                 padding: "0.9rem",
-                boxShadow: "0 1px 3px rgba(0,0,0,0.04)"
+                boxShadow: "var(--shadow-sm)"
               }}
             >
               {/* Comment Header */}
@@ -455,7 +441,7 @@ export default function CommentsDrawer({
                     width: "24px",
                     height: "24px",
                     borderRadius: "50%",
-                    backgroundColor: "#3b82f6",
+                    backgroundColor: "var(--accent-color)",
                     color: "#ffffff",
                     display: "flex",
                     alignItems: "center",
@@ -506,12 +492,12 @@ export default function CommentsDrawer({
                 <div style={{
                   padding: "0.25rem 0.5rem",
                   borderRadius: "4px",
-                  backgroundColor: "#fef9c3",
+                  backgroundColor: "var(--accent-glow)",
                   fontSize: "0.75rem",
-                  color: "#854d0e",
+                  color: "var(--accent-color)",
                   fontStyle: "italic",
                   marginBottom: "0.45rem",
-                  borderLeft: "2px solid #eab308"
+                  borderLeft: "2px solid var(--accent-color)"
                 }}>
                   "{comment.selected_text}"
                 </div>
@@ -547,11 +533,8 @@ export default function CommentsDrawer({
                   onKeyDown={(e) => e.key === "Enter" && handleSendReply(comment.id)}
                   style={{
                     flex: 1,
-                    padding: "0.35rem 0.55rem",
+                    padding: "0.4rem 0.6rem",
                     borderRadius: "6px",
-                    border: "1px solid var(--border-color)",
-                    backgroundColor: "var(--input-bg)",
-                    color: "var(--text-primary)",
                     fontSize: "0.75rem",
                     outline: "none"
                   }}
@@ -559,11 +542,11 @@ export default function CommentsDrawer({
                 <button
                   onClick={() => handleSendReply(comment.id)}
                   style={{
-                    padding: "0.35rem 0.55rem",
+                    padding: "0.4rem 0.65rem",
                     borderRadius: "6px",
                     border: "none",
-                    backgroundColor: "#eff6ff",
-                    color: "#2563eb",
+                    backgroundColor: "var(--accent-glow)",
+                    color: "var(--accent-color)",
                     cursor: "pointer",
                     fontSize: "0.75rem",
                     fontWeight: "600"

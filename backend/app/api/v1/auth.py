@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.core.security import create_access_token, get_password_hash
+from app.core.security import create_access_token, hash_password
 from app.schemas.auth import UserRegister, UserLogin, UserResponse, Token
 from app.services.auth_service import AuthService
 from app.api.deps import get_current_user
@@ -41,7 +41,6 @@ async def google_oauth_login(payload: GoogleAuthRequest, db: Session = Depends(g
     full_name = "Google User"
 
     if payload.id_token:
-        # Verify ID token with Google tokeninfo endpoint
         async with httpx.AsyncClient() as client:
             res = await client.get(f"https://oauth2.googleapis.com/tokeninfo?id_token={payload.id_token}")
             if res.status_code != 200:
@@ -78,12 +77,11 @@ async def google_oauth_login(payload: GoogleAuthRequest, db: Session = Depends(g
             detail="Google account email could not be retrieved.",
         )
 
-    # Find or create user in database
     user = AuthService.get_by_email(db, email)
     if not user:
         user = User(
             email=email,
-            hashed_password=get_password_hash(secrets.token_urlsafe(32)),
+            hashed_password=hash_password(secrets.token_urlsafe(32)),
             full_name=full_name,
             is_active=True,
         )
@@ -125,7 +123,6 @@ async def github_oauth_login(payload: GitHubAuthRequest, db: Session = Depends(g
         if not gh_token:
             raise HTTPException(status_code=400, detail="GitHub access token not received")
 
-        # Fetch user info & emails
         user_res = await client.get(
             "https://api.github.com/user",
             headers={"Authorization": f"Bearer {gh_token}", "Accept": "application/json"},
@@ -151,7 +148,7 @@ async def github_oauth_login(payload: GitHubAuthRequest, db: Session = Depends(g
     if not user:
         user = User(
             email=email,
-            hashed_password=get_password_hash(secrets.token_urlsafe(32)),
+            hashed_password=hash_password(secrets.token_urlsafe(32)),
             full_name=full_name,
             is_active=True,
         )
