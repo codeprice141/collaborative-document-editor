@@ -284,7 +284,7 @@ export default function EditorPage() {
             }}
           >
             <FileText size={15} />
-            <span>Document</span>
+            <span>Editor</span>
           </button>
           <button
             onClick={() => setActiveTab("canvas")}
@@ -305,7 +305,7 @@ export default function EditorPage() {
             }}
           >
             <Palette size={15} />
-            <span>Whiteboard</span>
+            <span>Canvas</span>
           </button>
         </div>
 

@@ -29,6 +29,32 @@ async function handleResponse(res, defaultErrorMsg = "Request failed") {
 }
 
 export const api = {
+  async getOAuthConfig() {
+    const res = await fetch(`${API_BASE}/auth/oauth/config`);
+    return handleResponse(res, "Failed to get OAuth config");
+  },
+
+  async loginWithGoogle(idTokenOrAccessToken) {
+    const payload = typeof idTokenOrAccessToken === "string" && idTokenOrAccessToken.startsWith("ey")
+      ? { id_token: idTokenOrAccessToken }
+      : { access_token: idTokenOrAccessToken };
+    const res = await fetch(`${API_BASE}/auth/google`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    return handleResponse(res, "Google authentication failed");
+  },
+
+  async loginWithGitHub(code) {
+    const res = await fetch(`${API_BASE}/auth/github`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
+    });
+    return handleResponse(res, "GitHub authentication failed");
+  },
+
   async searchUsers(query = "") {
     const res = await fetch(`${API_BASE}/auth/users?q=${encodeURIComponent(query)}`, {
       headers: getAuthHeaders(),

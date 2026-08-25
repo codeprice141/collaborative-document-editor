@@ -42,6 +42,24 @@ export function AuthProvider({ children }) {
     return login(email, password);
   };
 
+  const loginWithGoogle = async (idTokenOrAccessToken) => {
+    const data = await api.loginWithGoogle(idTokenOrAccessToken);
+    setToken(data.access_token);
+    setUser(data.user);
+    localStorage.setItem("token", data.access_token);
+    localStorage.setItem("user", JSON.stringify(data.user));
+    return data;
+  };
+
+  const loginWithGitHub = async (code) => {
+    const data = await api.loginWithGitHub(code);
+    setToken(data.access_token);
+    setUser(data.user);
+    localStorage.setItem("token", data.access_token);
+    localStorage.setItem("user", JSON.stringify(data.user));
+    return data;
+  };
+
   const logout = () => {
     setUser(null);
     setToken(null);
@@ -50,7 +68,18 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, register, logout, loading }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        login,
+        register,
+        loginWithGoogle,
+        loginWithGitHub,
+        logout,
+        loading,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

@@ -1,5 +1,5 @@
 import json
-from typing import List, Union
+from typing import List, Union, Optional
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -23,6 +23,12 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "supersecretjwtkeyforcollaborativedocumenteditor_changeinproduction"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
+
+    # OAuth Settings
+    GOOGLE_CLIENT_ID: Optional[str] = ""
+    GOOGLE_CLIENT_SECRET: Optional[str] = ""
+    GITHUB_CLIENT_ID: Optional[str] = ""
+    GITHUB_CLIENT_SECRET: Optional[str] = ""
 
     # CORS configuration
     CORS_ORIGINS: List[str] = [
