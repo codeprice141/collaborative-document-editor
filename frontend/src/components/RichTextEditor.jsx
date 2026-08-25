@@ -229,104 +229,105 @@ export default function RichTextEditor({
         </div>
       )}
 
-      {/* Modern High-End Padded Formatting Toolbar */}
+      {/* Modern Ultra-Spacious Formatting Toolbar Pill */}
       {!isReadOnly && (
         <div style={{
           position: "sticky",
-          top: "16px",
+          top: "20px",
           zIndex: 20,
           backgroundColor: "var(--bg-surface-glass)",
-          backdropFilter: "blur(16px)",
+          backdropFilter: "blur(20px)",
           border: "1px solid var(--border-color)",
-          borderRadius: "16px",
-          padding: "10px 16px",
+          borderRadius: "20px",
+          padding: "14px 22px", // Ultra spacious luxurious padding!
           display: "flex",
           alignItems: "center",
-          gap: "8px",
-          boxShadow: "0 12px 30px -5px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.04)",
-          margin: "4px auto 2rem auto",
+          gap: "10px",
+          boxShadow: "0 20px 40px -10px rgba(0,0,0,0.12), 0 8px 16px -4px rgba(0,0,0,0.06)",
+          margin: "10px auto 2.5rem auto",
           maxWidth: "100%",
           overflowX: "auto",
           WebkitOverflowScrolling: "touch"
         }}>
           {/* Text Styles */}
-          <div style={{ display: "flex", gap: "4px", borderRight: "1px solid var(--border-color)", paddingRight: "8px", flexShrink: 0, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: "6px", borderRight: "1.5px solid var(--border-color)", paddingRight: "10px", flexShrink: 0, alignItems: "center" }}>
             <button onClick={() => exec("bold")} style={toolBtn(activeStyles.bold)} title="Bold (Ctrl+B)">
-              <Bold size={16} />
+              <Bold size={17} />
             </button>
             <button onClick={() => exec("italic")} style={toolBtn(activeStyles.italic)} title="Italic (Ctrl+I)">
-              <Italic size={16} />
+              <Italic size={17} />
             </button>
             <button onClick={() => exec("underline")} style={toolBtn(activeStyles.underline)} title="Underline (Ctrl+U)">
-              <Underline size={16} />
+              <Underline size={17} />
             </button>
             <button onClick={() => exec("strikeThrough")} style={toolBtn(activeStyles.strikeThrough)} title="Strikethrough">
-              <Strikethrough size={16} />
+              <Strikethrough size={17} />
             </button>
           </div>
 
           {/* Headings */}
-          <div style={{ display: "flex", gap: "4px", borderRight: "1px solid var(--border-color)", paddingRight: "8px", flexShrink: 0, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: "6px", borderRight: "1.5px solid var(--border-color)", paddingRight: "10px", flexShrink: 0, alignItems: "center" }}>
             <button onClick={() => exec("formatBlock", "<h1>")} style={toolBtn(activeStyles.h1)} title="Heading 1">
-              <Heading1 size={16} />
+              <Heading1 size={17} />
             </button>
             <button onClick={() => exec("formatBlock", "<h2>")} style={toolBtn(activeStyles.h2)} title="Heading 2">
-              <Heading2 size={16} />
+              <Heading2 size={17} />
             </button>
             <button onClick={() => exec("formatBlock", "<h3>")} style={toolBtn(activeStyles.h3)} title="Heading 3">
-              <Heading3 size={16} />
+              <Heading3 size={17} />
             </button>
             <button onClick={() => exec("formatBlock", "<p>")} style={toolBtn(activeStyles.p)} title="Paragraph">
-              <span style={{ fontSize: "0.85rem", fontWeight: "700", padding: "0 2px" }}>P</span>
+              <span style={{ fontSize: "0.9rem", fontWeight: "800", padding: "0 2px" }}>P</span>
             </button>
           </div>
 
           {/* Lists & Quotes */}
-          <div style={{ display: "flex", gap: "4px", borderRight: "1px solid var(--border-color)", paddingRight: "8px", flexShrink: 0, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: "6px", borderRight: "1.5px solid var(--border-color)", paddingRight: "10px", flexShrink: 0, alignItems: "center" }}>
             <button onClick={() => exec("insertUnorderedList")} style={toolBtn(activeStyles.ul)} title="Bullet List">
-              <List size={16} />
+              <List size={17} />
             </button>
             <button onClick={() => exec("insertOrderedList")} style={toolBtn(activeStyles.ol)} title="Numbered List">
-              <ListOrdered size={16} />
+              <ListOrdered size={17} />
             </button>
             <button onClick={() => exec("formatBlock", "<blockquote>")} style={toolBtn(activeStyles.quote)} title="Quote Block">
-              <Quote size={16} />
+              <Quote size={17} />
             </button>
             <button onClick={() => exec("formatBlock", "<pre>")} style={toolBtn(activeStyles.code)} title="Code Block">
-              <Code size={16} />
+              <Code size={17} />
             </button>
           </div>
 
           {/* Alignment */}
-          <div style={{ display: "flex", gap: "4px", borderRight: "1px solid var(--border-color)", paddingRight: "8px", flexShrink: 0, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: "6px", borderRight: "1.5px solid var(--border-color)", paddingRight: "10px", flexShrink: 0, alignItems: "center" }}>
             <button onClick={() => exec("justifyLeft")} style={toolBtn(activeStyles.justifyLeft)} title="Align Left">
-              <AlignLeft size={16} />
+              <AlignLeft size={17} />
             </button>
             <button onClick={() => exec("justifyCenter")} style={toolBtn(activeStyles.justifyCenter)} title="Align Center">
-              <AlignCenter size={16} />
+              <AlignCenter size={17} />
             </button>
             <button onClick={() => exec("justifyRight")} style={toolBtn(activeStyles.justifyRight)} title="Align Right">
-              <AlignRight size={16} />
+              <AlignRight size={17} />
             </button>
           </div>
 
           {/* Highlights & Clear */}
-          <div style={{ display: "flex", alignItems: "center", gap: "6px", paddingLeft: "4px", flexShrink: 0 }}>
-            <Highlighter size={14} color="var(--text-secondary)" />
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", paddingLeft: "6px", flexShrink: 0 }}>
+            <Highlighter size={16} color="var(--text-secondary)" />
             {HIGHLIGHT_COLORS.map((c) => (
               <button
                 key={c}
                 onClick={() => exec("hiliteColor", c)}
                 style={{
-                  width: "18px", height: "18px", borderRadius: "50%",
-                  backgroundColor: c, border: "1px solid var(--border-color)",
-                  cursor: "pointer", padding: 0, flexShrink: 0
+                  width: "20px", height: "20px", borderRadius: "50%",
+                  backgroundColor: c, border: "1.5px solid var(--border-color)",
+                  cursor: "pointer", padding: 0, flexShrink: 0,
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.1)"
                 }}
                 title="Highlight Color"
               />
             ))}
             <button onClick={() => exec("removeFormat")} style={{ ...toolBtn(false), marginLeft: "4px" }} title="Clear Formatting">
-              <RemoveFormatting size={15} />
+              <RemoveFormatting size={16} />
             </button>
           </div>
         </div>
@@ -400,9 +401,9 @@ export default function RichTextEditor({
 }
 
 const toolBtn = (isActive) => ({
-  width: "34px",
-  height: "34px",
-  borderRadius: "8px",
+  width: "38px",
+  height: "38px",
+  borderRadius: "10px",
   border: isActive ? "1px solid #93c5fd" : "1px solid transparent",
   backgroundColor: isActive ? "#eff6ff" : "transparent",
   color: isActive ? "#2563eb" : "var(--text-secondary)",
