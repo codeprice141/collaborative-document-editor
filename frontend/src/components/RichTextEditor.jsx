@@ -45,11 +45,36 @@ export default function RichTextEditor({
   const [selectedText, setSelectedText] = useState("");
   const [selectionCoords, setSelectionCoords] = useState(null);
 
-  // Color picker popover states
+  // Color picker popover states and refs for outside click dismiss
   const [showTextColorPicker, setShowTextColorPicker] = useState(false);
   const [showHighlightPicker, setShowHighlightPicker] = useState(false);
   const [customTextColor, setCustomTextColor] = useState("#000000");
   const [customHighlightColor, setCustomHighlightColor] = useState("#fef08a");
+
+  const textColorPickerRef = useRef(null);
+  const highlightPickerRef = useRef(null);
+
+  // Outside click listener to auto-close color dropdowns
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (textColorPickerRef.current && !textColorPickerRef.current.contains(e.target)) {
+        setShowTextColorPicker(false);
+      }
+      if (highlightPickerRef.current && !highlightPickerRef.current.contains(e.target)) {
+        setShowHighlightPicker(false);
+      }
+    };
+
+    if (showTextColorPicker || showHighlightPicker) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("touchstart", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, [showTextColorPicker, showHighlightPicker]);
 
   const [activeStyles, setActiveStyles] = useState({
     bold: false,
@@ -329,8 +354,8 @@ export default function RichTextEditor({
             </button>
           </div>
 
-          {/* Text Color Picker Dropdown with Custom Color Picker */}
-          <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+          {/* Text Color Picker Dropdown with Custom Color Picker & Ref for outside click */}
+          <div ref={textColorPickerRef} style={{ position: "relative", display: "flex", alignItems: "center" }}>
             <button
               onClick={() => {
                 setShowTextColorPicker(!showTextColorPicker);
@@ -423,8 +448,8 @@ export default function RichTextEditor({
             )}
           </div>
 
-          {/* Highlight Color Picker Dropdown with Custom Color Picker */}
-          <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+          {/* Highlight Color Picker Dropdown with Custom Color Picker & Ref for outside click */}
+          <div ref={highlightPickerRef} style={{ position: "relative", display: "flex", alignItems: "center" }}>
             <button
               onClick={() => {
                 setShowHighlightPicker(!showHighlightPicker);
