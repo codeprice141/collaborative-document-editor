@@ -6,15 +6,16 @@ from fastapi import WebSocket, WebSocketDisconnect
 from sqlalchemy.orm import Session
 
 from app.core.metrics import metrics
+from app.core.rate_limiter import ws_rate_limiter
+from app.core.security import decode_access_token
 from app.models.user import User
 from app.models.document import CollaboratorRole
 from app.services.document_service import DocumentService
 from app.services.auth_service import AuthService
-from app.websocket.connection_manager import manager
-from app.websocket.presence_service import presence_service
-from app.websocket.sync_engine import sync_engine
-from app.websocket.rate_limiter import ws_rate_limiter
+from app.services.presence_service import presence_service
+from app.services.sync_engine import sync_engine
 from app.services.write_behind_buffer import write_buffer
+from app.websocket.connection_manager import manager
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +23,10 @@ logger = logging.getLogger(__name__)
 def authenticate_ws_token(token: str, db: Session) -> Optional[User]:
     """Decodes JWT token and validates active user for WebSocket handshake."""
     try:
-        user_id = AuthService.decode_token(token)
+        payload = decode_access_token(token)
+        if not payload:
+            return None
+        user_id = payload.get("sub")
         if not user_id:
             return None
         user = db.query(User).filter(User.id == int(user_id)).first()
@@ -60,7 +64,8 @@ async def handle_websocket_connection(
             await websocket.close(code=4003)
             return
 
-        role_enum = CollaboratorRole(role) if not isinstance(role, CollaboratorRole) else role
+        role_str = role.value if hasattr(role, "value") else str(role)
+        role_enum = CollaboratorRole(role_str)
 
         # 3. Accept connection and record telemetry
         await manager.connect(document_id, client_id, websocket)
@@ -83,7 +88,7 @@ async def handle_websocket_connection(
             "content": doc.content,
             "drawing_data": doc.drawing_data or "[]",
             "version": doc.version,
-            "user_role": role_enum.value,
+            "user_role": role_str,
             "user_color": user_presence.color,
             "vector_clock": sync_engine.get_vector_clock(document_id),
             "active_users": presence_service.get_room_presence(document_id),
@@ -188,7 +193,6 @@ async def handle_websocket_connection(
                 stroke_data = msg.get("stroke")
 
                 if elements_data is not None:
-                    # Update in-memory document drawing data and buffer to PostgreSQL
                     drawing_json = json.dumps(elements_data) if not isinstance(elements_data, str) else elements_data
                     doc.drawing_data = drawing_json
                     write_buffer.mark_dirty(document_id, drawing_data=drawing_json)
