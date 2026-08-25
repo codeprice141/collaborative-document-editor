@@ -118,35 +118,41 @@ export default function RichTextEditor({
   };
 
   useEffect(() => {
-    document.addEventListener("selectionchange", updateActiveStyles);
+    const handleSelectionChange = () => {
+      updateActiveStyles();
+    };
+    document.addEventListener("selectionchange", handleSelectionChange);
     return () => {
-      document.removeEventListener("selectionchange", updateActiveStyles);
+      document.removeEventListener("selectionchange", handleSelectionChange);
     };
   }, [isReadOnly]);
 
+  // Sync external incoming content changes without resetting cursor if user is editing
   useEffect(() => {
-    if (editorRef.current && !isInternalUpdate.current) {
-      if (editorRef.current.innerHTML !== htmlContent) {
-        editorRef.current.innerHTML = htmlContent || "<p><br></p>";
+    if (editorRef.current && htmlContent !== undefined) {
+      if (editorRef.current.innerHTML !== htmlContent && !isInternalUpdate.current) {
+        editorRef.current.innerHTML = htmlContent;
       }
+      isInternalUpdate.current = false;
     }
-    isInternalUpdate.current = false;
   }, [htmlContent]);
 
   const exec = (command, value = null) => {
     if (isReadOnly) return;
     document.execCommand(command, false, value);
     if (editorRef.current) {
+      const newHtml = editorRef.current.innerHTML;
+      isInternalUpdate.current = true;
+      onHtmlChange(newHtml);
       editorRef.current.focus();
-      handleInput();
-      updateActiveStyles();
     }
+    updateActiveStyles();
   };
 
   const handleInput = () => {
     if (isReadOnly || !editorRef.current) return;
-    isInternalUpdate.current = true;
     const newHtml = editorRef.current.innerHTML;
+    isInternalUpdate.current = true;
     onHtmlChange(newHtml);
     sendCursorPosition();
     updateActiveStyles();
@@ -227,24 +233,24 @@ export default function RichTextEditor({
       {!isReadOnly && (
         <div style={{
           position: "sticky",
-          top: "12px",
+          top: "16px",
           zIndex: 20,
           backgroundColor: "var(--bg-surface-glass)",
-          backdropFilter: "blur(12px)",
+          backdropFilter: "blur(16px)",
           border: "1px solid var(--border-color)",
-          borderRadius: "14px",
-          padding: "0.45rem 0.65rem",
+          borderRadius: "16px",
+          padding: "10px 16px",
           display: "flex",
           alignItems: "center",
-          gap: "0.35rem",
-          boxShadow: "0 10px 25px -5px rgba(0,0,0,0.08), 0 4px 6px -2px rgba(0,0,0,0.03)",
-          marginBottom: "1.75rem",
+          gap: "8px",
+          boxShadow: "0 12px 30px -5px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.04)",
+          margin: "4px auto 2rem auto",
           maxWidth: "100%",
           overflowX: "auto",
           WebkitOverflowScrolling: "touch"
         }}>
           {/* Text Styles */}
-          <div style={{ display: "flex", gap: "3px", borderRight: "1px solid var(--border-color)", paddingRight: "0.45rem", flexShrink: 0 }}>
+          <div style={{ display: "flex", gap: "4px", borderRight: "1px solid var(--border-color)", paddingRight: "8px", flexShrink: 0, alignItems: "center" }}>
             <button onClick={() => exec("bold")} style={toolBtn(activeStyles.bold)} title="Bold (Ctrl+B)">
               <Bold size={16} />
             </button>
@@ -260,7 +266,7 @@ export default function RichTextEditor({
           </div>
 
           {/* Headings */}
-          <div style={{ display: "flex", gap: "3px", borderRight: "1px solid var(--border-color)", paddingRight: "0.45rem", flexShrink: 0 }}>
+          <div style={{ display: "flex", gap: "4px", borderRight: "1px solid var(--border-color)", paddingRight: "8px", flexShrink: 0, alignItems: "center" }}>
             <button onClick={() => exec("formatBlock", "<h1>")} style={toolBtn(activeStyles.h1)} title="Heading 1">
               <Heading1 size={16} />
             </button>
@@ -276,7 +282,7 @@ export default function RichTextEditor({
           </div>
 
           {/* Lists & Quotes */}
-          <div style={{ display: "flex", gap: "3px", borderRight: "1px solid var(--border-color)", paddingRight: "0.45rem", flexShrink: 0 }}>
+          <div style={{ display: "flex", gap: "4px", borderRight: "1px solid var(--border-color)", paddingRight: "8px", flexShrink: 0, alignItems: "center" }}>
             <button onClick={() => exec("insertUnorderedList")} style={toolBtn(activeStyles.ul)} title="Bullet List">
               <List size={16} />
             </button>
@@ -292,7 +298,7 @@ export default function RichTextEditor({
           </div>
 
           {/* Alignment */}
-          <div style={{ display: "flex", gap: "3px", borderRight: "1px solid var(--border-color)", paddingRight: "0.45rem", flexShrink: 0 }}>
+          <div style={{ display: "flex", gap: "4px", borderRight: "1px solid var(--border-color)", paddingRight: "8px", flexShrink: 0, alignItems: "center" }}>
             <button onClick={() => exec("justifyLeft")} style={toolBtn(activeStyles.justifyLeft)} title="Align Left">
               <AlignLeft size={16} />
             </button>
@@ -304,22 +310,22 @@ export default function RichTextEditor({
             </button>
           </div>
 
-          {/* Highlights */}
-          <div style={{ display: "flex", alignItems: "center", gap: "4px", paddingLeft: "0.25rem", flexShrink: 0 }}>
+          {/* Highlights & Clear */}
+          <div style={{ display: "flex", alignItems: "center", gap: "6px", paddingLeft: "4px", flexShrink: 0 }}>
             <Highlighter size={14} color="var(--text-secondary)" />
             {HIGHLIGHT_COLORS.map((c) => (
               <button
                 key={c}
                 onClick={() => exec("hiliteColor", c)}
                 style={{
-                  width: "16px", height: "16px", borderRadius: "50%",
+                  width: "18px", height: "18px", borderRadius: "50%",
                   backgroundColor: c, border: "1px solid var(--border-color)",
-                  cursor: "pointer", padding: 0
+                  cursor: "pointer", padding: 0, flexShrink: 0
                 }}
                 title="Highlight Color"
               />
             ))}
-            <button onClick={() => exec("removeFormat")} style={{ ...toolBtn(false), marginLeft: "2px" }} title="Clear Formatting">
+            <button onClick={() => exec("removeFormat")} style={{ ...toolBtn(false), marginLeft: "4px" }} title="Clear Formatting">
               <RemoveFormatting size={15} />
             </button>
           </div>
@@ -394,8 +400,8 @@ export default function RichTextEditor({
 }
 
 const toolBtn = (isActive) => ({
-  width: "32px",
-  height: "32px",
+  width: "34px",
+  height: "34px",
   borderRadius: "8px",
   border: isActive ? "1px solid #93c5fd" : "1px solid transparent",
   backgroundColor: isActive ? "#eff6ff" : "transparent",
@@ -405,5 +411,6 @@ const toolBtn = (isActive) => ({
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  transition: "all 0.15s ease"
+  transition: "all 0.15s ease",
+  flexShrink: 0
 });
