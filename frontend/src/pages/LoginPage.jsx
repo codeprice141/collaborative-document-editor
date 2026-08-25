@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { api } from "../services/api";
-import { FileText, LogIn, Sun, Moon, AlertCircle, Info } from "lucide-react";
+import { FileText, LogIn, Sun, Moon, AlertCircle, HelpCircle, X, Check } from "lucide-react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -11,6 +11,8 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleClientId, setGoogleClientId] = useState("");
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [customClientIdInput, setCustomClientIdInput] = useState("");
   const googleBtnRef = useRef(null);
 
   const { login, loginWithGoogle } = useAuth();
@@ -19,27 +21,38 @@ export default function LoginPage() {
 
   // Load OAuth Config & Initialize Google Identity Services (GSI)
   useEffect(() => {
+    const savedClientId = localStorage.getItem("google_client_id");
     api.getOAuthConfig().then((cfg) => {
-      if (cfg?.google_client_id) {
-        setGoogleClientId(cfg.google_client_id);
-        if (window.google?.accounts?.id) {
-          window.google.accounts.id.initialize({
-            client_id: cfg.google_client_id,
-            callback: handleGoogleCallback,
-          });
-          if (googleBtnRef.current) {
-            window.google.accounts.id.renderButton(googleBtnRef.current, {
-              theme: isDark ? "filled_black" : "outline",
-              size: "large",
-              width: 320,
-              text: "continue_with",
-              shape: "pill",
-            });
-          }
-        }
+      const activeClientId = cfg?.google_client_id || savedClientId || "";
+      if (activeClientId) {
+        setGoogleClientId(activeClientId);
+        initGoogleGSI(activeClientId);
       }
-    }).catch(() => {});
+    }).catch(() => {
+      if (savedClientId) {
+        setGoogleClientId(savedClientId);
+        initGoogleGSI(savedClientId);
+      }
+    });
   }, [isDark]);
+
+  const initGoogleGSI = (clientId) => {
+    if (window.google?.accounts?.id && clientId) {
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: handleGoogleCallback,
+      });
+      if (googleBtnRef.current) {
+        window.google.accounts.id.renderButton(googleBtnRef.current, {
+          theme: isDark ? "filled_black" : "outline",
+          size: "large",
+          width: 320,
+          text: "continue_with",
+          shape: "pill",
+        });
+      }
+    }
+  };
 
   const handleGoogleCallback = async (response) => {
     if (response?.credential) {
@@ -60,18 +73,23 @@ export default function LoginPage() {
     if (googleClientId && window.google?.accounts?.id) {
       window.google.accounts.id.prompt();
     } else {
-      // Direct Google OAuth 2.0 Authorization Endpoint
-      const clientId = googleClientId || "407408718192.apps.googleusercontent.com"; // Standard demo GSuite client
-      const redirectUri = window.location.origin;
-      const scope = encodeURIComponent("openid email profile");
-      const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=token%20id_token&scope=${scope}&nonce=nonce_${Date.now()}`;
-      
-      // Open official Google Accounts chooser in popup window
-      const popup = window.open(googleAuthUrl, "google_oauth_popup", "width=500,height=600,menubar=no,toolbar=no");
-      if (!popup) {
-        setError("Popup blocked. Please allow popups for Google sign-in.");
-      }
+      setShowConfigModal(true);
     }
+  };
+
+  const handleSaveGoogleClientId = (e) => {
+    e.preventDefault();
+    if (!customClientIdInput.trim()) return;
+    const cid = customClientIdInput.trim();
+    localStorage.setItem("google_client_id", cid);
+    setGoogleClientId(cid);
+    setShowConfigModal(false);
+    initGoogleGSI(cid);
+    setTimeout(() => {
+      if (window.google?.accounts?.id) {
+        window.google.accounts.id.prompt();
+      }
+    }, 300);
   };
 
   const handleSubmit = async (e) => {
@@ -121,7 +139,7 @@ export default function LoginPage() {
           </div>
         )}
 
-        {/* Real Google OAuth 2.0 Button */}
+        {/* Real Google Identity Services (GSI) Button */}
         <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1.25rem" }}>
           <div ref={googleBtnRef} style={{ width: "100%", display: "flex", justifyContent: "center" }}>
             <button
@@ -219,6 +237,71 @@ export default function LoginPage() {
           </Link>
         </div>
       </div>
+
+      {/* Google OAuth Setup Helper Modal */}
+      {showConfigModal && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: "rgba(15, 23, 42, 0.7)", backdropFilter: "blur(6px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          zIndex: 100, padding: "1rem"
+        }}>
+          <div style={{
+            backgroundColor: "var(--bg-surface)",
+            borderRadius: "18px", padding: "1.75rem",
+            width: "100%", maxWidth: "450px",
+            border: "1px solid var(--border-color)",
+            boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)"
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <svg width="22" height="22" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                </svg>
+                <h3 style={{ fontSize: "1.1rem", fontWeight: "700", color: "var(--text-primary)" }}>
+                  Google OAuth Configuration
+                </h3>
+              </div>
+              <button onClick={() => setShowConfigModal(false)} style={{ border: "none", background: "none", cursor: "pointer", color: "var(--text-secondary)" }}>
+                <X size={19} />
+              </button>
+            </div>
+
+            <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", lineHeight: "1.5", marginBottom: "1rem" }}>
+              To enable <strong>Google Sign-In with real Google accounts</strong> on your local server, enter your <strong>Google OAuth Client ID</strong> from Google Cloud Console:
+            </p>
+
+            <form onSubmit={handleSaveGoogleClientId} style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+              <input
+                type="text"
+                placeholder="e.g. 123456789-abcdef.apps.googleusercontent.com"
+                value={customClientIdInput}
+                onChange={(e) => setCustomClientIdInput(e.target.value)}
+                style={{ width: "100%", padding: "0.65rem 0.85rem", borderRadius: "8px", fontSize: "0.85rem", outline: "none" }}
+              />
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.5rem", marginTop: "0.5rem" }}>
+                <button
+                  type="button"
+                  onClick={() => setShowConfigModal(false)}
+                  style={{ padding: "0.55rem 1rem", borderRadius: "8px", border: "1px solid var(--border-color)", backgroundColor: "transparent", color: "var(--text-secondary)", cursor: "pointer", fontSize: "0.85rem" }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  style={{ padding: "0.55rem 1.15rem", borderRadius: "8px", border: "none", backgroundColor: "#2563eb", color: "#ffffff", fontWeight: "600", cursor: "pointer", fontSize: "0.85rem" }}
+                >
+                  Save & Connect
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
