@@ -29,6 +29,21 @@ const PRESET_HIGHLIGHT_COLORS = [
   "#e9d5ff", "#fecdd3", "#c7d2fe", "#a7f3d0", "#fef9c3"
 ];
 
+const FONT_SIZES = [
+  { label: "10", value: "10px" },
+  { label: "11", value: "11px" },
+  { label: "12", value: "12px" },
+  { label: "14", value: "14px" },
+  { label: "16", value: "16px" },
+  { label: "18", value: "18px" },
+  { label: "20", value: "20px" },
+  { label: "24", value: "24px" },
+  { label: "28", value: "28px" },
+  { label: "32", value: "32px" },
+  { label: "36", value: "36px" },
+  { label: "48", value: "48px" },
+];
+
 export default function RichTextEditor({
   htmlContent,
   onHtmlChange,
@@ -44,6 +59,9 @@ export default function RichTextEditor({
   // Floating comment button state
   const [selectedText, setSelectedText] = useState("");
   const [selectionCoords, setSelectionCoords] = useState(null);
+
+  // Font size state
+  const [fontSize, setFontSize] = useState("16px");
 
   // Color picker popover states and refs for outside click dismiss
   const [showTextColorPicker, setShowTextColorPicker] = useState(false);
@@ -185,6 +203,25 @@ export default function RichTextEditor({
     exec("formatBlock", tag === "p" ? "<p>" : `<${tag}>`);
   };
 
+  const handleFontSizeChange = (e) => {
+    const size = e.target.value;
+    setFontSize(size);
+    if (isReadOnly || !editorRef.current) return;
+    document.execCommand("styleWithCSS", false, true);
+    document.execCommand("fontSize", false, "7");
+    if (editorRef.current) {
+      const fonts = editorRef.current.querySelectorAll('font[size="7"], span[style*="xxx-large"], span[style*="-webkit-xxx-large"]');
+      fonts.forEach((el) => {
+        el.removeAttribute("size");
+        el.style.fontSize = size;
+      });
+      const newHtml = editorRef.current.innerHTML;
+      isInternalUpdate.current = true;
+      onHtmlChange(newHtml);
+    }
+    updateActiveStyles();
+  };
+
   const handleInput = () => {
     if (isReadOnly || !editorRef.current) return;
     const newHtml = editorRef.current.innerHTML;
@@ -306,6 +343,32 @@ export default function RichTextEditor({
               <option value="h3">Heading 3</option>
               <option value="blockquote">Quote</option>
               <option value="pre">Code block</option>
+            </select>
+          </div>
+
+          {/* Font Size Dropdown */}
+          <div style={{ display: "flex", alignItems: "center", borderRight: "1px solid var(--border-color)", paddingRight: "6px" }}>
+            <select
+              value={fontSize}
+              onChange={handleFontSizeChange}
+              style={{
+                backgroundColor: "transparent",
+                border: "none",
+                fontSize: "0.8125rem",
+                fontWeight: "600",
+                color: "var(--text-primary)",
+                cursor: "pointer",
+                padding: "4px 6px",
+                borderRadius: "6px",
+                outline: "none"
+              }}
+              title="Font Size"
+            >
+              {FONT_SIZES.map((fs) => (
+                <option key={fs.value} value={fs.value}>
+                  {fs.label}
+                </option>
+              ))}
             </select>
           </div>
 
