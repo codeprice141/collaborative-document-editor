@@ -8,7 +8,11 @@ export function AuthProvider({ children }) {
     try { return JSON.parse(localStorage.getItem('user')); } catch { return null; }
   });
   const [token, setToken] = useState(() => localStorage.getItem('token'));
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => {
+    const cachedToken = localStorage.getItem('token');
+    const cachedUser = localStorage.getItem('user');
+    return !cachedToken || !cachedUser;
+  });
 
   useEffect(() => {
     if (token) {
@@ -17,7 +21,14 @@ export function AuthProvider({ children }) {
           setUser(userData);
           localStorage.setItem('user', JSON.stringify(userData));
         })
-        .catch(() => logout())
+        .catch((err) => {
+          // Only log out if explicitly 401 Unauthorized
+          if (err?.status === 401) {
+            logout();
+          } else {
+            console.warn('Background auth check:', err?.message || err);
+          }
+        })
         .finally(() => setLoading(false));
     } else {
       setLoading(false);

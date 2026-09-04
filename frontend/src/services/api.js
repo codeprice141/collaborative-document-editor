@@ -23,7 +23,9 @@ async function handleResponse(res, defaultErrorMsg = 'Request failed') {
     data = { detail: text || defaultErrorMsg };
   }
   if (!res.ok) {
-    throw new Error(data.detail || data.message || defaultErrorMsg);
+    const error = new Error(data.detail || data.message || defaultErrorMsg);
+    error.status = res.status;
+    throw error;
   }
   return data;
 }
@@ -75,8 +77,17 @@ export const api = {
   },
 
   async getMe() {
-    const res = await fetch(`${API_BASE}/auth/me`, { headers: getAuthHeaders() });
-    return handleResponse(res, 'Unauthorized');
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    try {
+      const res = await fetch(`${API_BASE}/auth/me`, {
+        headers: getAuthHeaders(),
+        signal: controller.signal,
+      });
+      return await handleResponse(res, 'Unauthorized');
+    } finally {
+      clearTimeout(timeoutId);
+    }
   },
 
   async searchUsers(query = '') {
