@@ -34,6 +34,20 @@ function base64ToUint8(base64) {
   return bytes;
 }
 
+function deduplicateUsers(users = []) {
+  const seen = new Set();
+  const result = [];
+  for (const u of users) {
+    if (!u) continue;
+    const key = u.user_id ? `uid_${u.user_id}` : `cid_${u.client_id}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      result.push(u);
+    }
+  }
+  return result;
+}
+
 export function useCollaboration(docId, onRemoteDraw, onRemoteComment) {
   const [initialContent, setInitialContent] = useState("");
   const [drawingData, setDrawingData] = useState("[]");
@@ -46,8 +60,9 @@ export function useCollaboration(docId, onRemoteDraw, onRemoteComment) {
   const [typingUsers, setTypingUsers] = useState([]);
   const [isReady, setIsReady] = useState(false);
 
-  // Single persistent Yjs Document instance per document hook lifecycle
+  // Single persistent Yjs Document instance and persistent Client ID per tab session
   const yjsDocRef = useRef(new Y.Doc());
+  const clientIdRef = useRef("client_" + Math.random().toString(36).substring(2, 8));
   const wsRef = useRef(null);
   const drawCallbackRef = useRef(onRemoteDraw);
   const commentCallbackRef = useRef(onRemoteComment);
@@ -94,8 +109,7 @@ export function useCollaboration(docId, onRemoteDraw, onRemoteComment) {
     const connect = () => {
       if (!isMountedRef.current) return;
       setConnectionStatus("connecting");
-      const clientId = "client_" + Math.random().toString(36).substring(2, 8);
-      const wsUrl = resolveWebSocketUrl(docId, token, clientId);
+      const wsUrl = resolveWebSocketUrl(docId, token, clientIdRef.current);
 
       try {
         ws = new WebSocket(wsUrl);
@@ -118,7 +132,7 @@ export function useCollaboration(docId, onRemoteDraw, onRemoteComment) {
                 setVersion(data.version || 0);
                 setUserRole(data.user_role || "editor");
                 setMyColor(data.user_color || "#6366f1");
-                setActiveUsers(data.active_users || []);
+                setActiveUsers(deduplicateUsers(data.active_users || []));
                 setConnectionStatus("connected");
                 setIsReady(true);
                 break;
@@ -135,8 +149,25 @@ export function useCollaboration(docId, onRemoteDraw, onRemoteComment) {
                 break;
 
               case "presence_join":
+                if (data.active_users) {
+                  setActiveUsers(deduplicateUsers(data.active_users));
+                } else if (data.user) {
+                  setActiveUsers((prev) => deduplicateUsers([...prev, data.user]));
+                }
+                break;
+
               case "presence_leave":
-                setActiveUsers(data.active_users || []);
+                if (data.active_users) {
+                  setActiveUsers(deduplicateUsers(data.active_users));
+                } else if (data.client_id || data.user_id) {
+                  setActiveUsers((prev) =>
+                    prev.filter(
+                      (u) =>
+                        u.client_id !== data.client_id &&
+                        u.user_id !== data.user_id
+                    )
+                  );
+                }
                 break;
 
               case "cursor_update":

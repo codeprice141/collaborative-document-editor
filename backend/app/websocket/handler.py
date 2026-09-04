@@ -129,6 +129,7 @@ async def handle_websocket_connection(
 
             # --- Heartbeat Ping / Pong ---
             if msg_type == "ping":
+                presence_service.touch(document_id, client_id)
                 await manager.send_personal_message({"type": "pong"}, websocket)
 
             # --- Collaborative Edit Operation (OT & Vector Clocks) ---
@@ -297,21 +298,23 @@ async def handle_websocket_connection(
                 )
 
     except WebSocketDisconnect:
+        pass
+    except Exception as exc:
+        logger.error("WebSocket unhandled exception: %s", exc)
+    finally:
         manager.disconnect(websocket)
         metrics.ws_disconnected()
         presence_service.user_left(document_id, client_id)
         if user:
-            await manager.broadcast_to_room(
-                document_id,
-                {
-                    "type": "presence_leave",
-                    "client_id": client_id,
-                    "user_id": user.id,
-                    "active_users": presence_service.get_room_presence(document_id),
-                },
-            )
-    except Exception as exc:
-        logger.error("WebSocket unhandled exception: %s", exc)
-        manager.disconnect(websocket)
-        metrics.ws_disconnected()
-        presence_service.user_left(document_id, client_id)
+            try:
+                await manager.broadcast_to_room(
+                    document_id,
+                    {
+                        "type": "presence_leave",
+                        "client_id": client_id,
+                        "user_id": user.id,
+                        "active_users": presence_service.get_room_presence(document_id),
+                    },
+                )
+            except Exception as b_err:
+                logger.debug("Failed to broadcast presence_leave: %s", b_err)

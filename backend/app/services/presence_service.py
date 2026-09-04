@@ -6,14 +6,14 @@ from app.schemas.presence import UserPresence, CursorPosition, SelectionRange
 
 # Distinct colors assigned to collaborators
 COLLAB_COLORS = [
-    "#FF5722", "#4CAF50", "#2196F3", "#9C27B0",
-    "#E91E63", "#00BCD4", "#FF9800", "#3F51B5",
-    "#009688", "#795548", "#607D8B", "#FFC107"
+    "#6366f1", "#10b981", "#f59e0b", "#ef4444",
+    "#8b5cf6", "#ec4899", "#14b8a6", "#f97316",
+    "#3b82f6", "#84cc16", "#06b6d4", "#e11d48"
 ]
 
 
 class PresenceService:
-    """Manages live presence state per document room."""
+    """Manages live presence state per document room with deduplication and heartbeat tracking."""
 
     def __init__(self):
         # {doc_id: {client_id: UserPresence}}
@@ -49,6 +49,13 @@ class PresenceService:
         with self._lock:
             return self._rooms[doc_id].pop(client_id, None)
 
+    def touch(self, doc_id: int, client_id: str):
+        """Refreshes last_seen timestamp on heartbeat ping or client activity."""
+        with self._lock:
+            presence = self._rooms[doc_id].get(client_id)
+            if presence:
+                presence.last_seen = time.time()
+
     def update_cursor(
         self,
         doc_id: int,
@@ -68,20 +75,29 @@ class PresenceService:
             return None
 
     def get_room_presence(self, doc_id: int) -> List[dict]:
-        """Returns active users and cleans up stale connections (> 60s inactivity)."""
+        """Returns unique active users and cleans up connections inactive for > 45s."""
         with self._lock:
             now = time.time()
-            active = []
             stale_keys = []
+            # Deduplicate by user_id to ensure multiple tabs or reconnects count as 1 collaborator
+            users_by_id: Dict[int, UserPresence] = {}
+            anon_users: List[UserPresence] = []
+
             for cid, pres in self._rooms[doc_id].items():
-                if now - pres.last_seen > 60:
+                if now - pres.last_seen > 45:
                     stale_keys.append(cid)
                 else:
-                    active.append(pres.model_dump())
+                    if pres.user_id:
+                        existing = users_by_id.get(pres.user_id)
+                        if not existing or pres.last_seen > existing.last_seen:
+                            users_by_id[pres.user_id] = pres
+                    else:
+                        anon_users.append(pres)
 
             for k in stale_keys:
                 self._rooms[doc_id].pop(k, None)
 
+            active = [p.model_dump() for p in users_by_id.values()] + [p.model_dump() for p in anon_users]
             return active
 
 
