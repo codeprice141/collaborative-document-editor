@@ -31,24 +31,29 @@ class Settings(BaseSettings):
     GITHUB_CLIENT_SECRET: Optional[str] = ""
 
     # CORS configuration
-    CORS_ORIGINS: List[str] = [
+    CORS_ORIGINS: Union[List[str], str] = [
         "http://localhost:3000",
         "http://localhost:5173",
         "http://127.0.0.1:3000",
         "http://127.0.0.1:5173",
     ]
 
-    @field_validator("CORS_ORIGINS", mode="before")
+    @field_validator("CORS_ORIGINS", mode="after")
     @classmethod
     def assemble_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
+        if isinstance(v, list):
+            return v
         if isinstance(v, str):
-            if v.startswith("[") and v.endswith("]"):
+            v_stripped = v.strip()
+            if v_stripped == "*":
+                return ["*"]
+            if v_stripped.startswith("[") and v_stripped.endswith("]"):
                 try:
-                    return json.loads(v)
+                    return json.loads(v_stripped)
                 except Exception:
                     pass
-            return [i.strip() for i in v.split(",") if i.strip()]
-        return v
+            return [i.strip() for i in v_stripped.split(",") if i.strip()]
+        return ["*"]
 
     # PostgreSQL Database Connection
     POSTGRES_SERVER: str = "localhost"
