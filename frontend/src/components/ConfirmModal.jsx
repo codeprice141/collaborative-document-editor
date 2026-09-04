@@ -1,98 +1,50 @@
-import React from "react";
-import { AlertTriangle, Info, X } from "lucide-react";
+import React from 'react';
+import { AlertTriangle, Info, X } from 'lucide-react';
 
 export default function ConfirmModal({
   isOpen,
-  title = "Are you sure?",
-  message = "This action cannot be undone.",
-  confirmText = "Confirm",
-  cancelText = "Cancel",
-  type = "danger", // "danger" | "primary" | "warning"
+  title = 'Are you sure?',
+  message = 'This action cannot be undone.',
+  confirmText = 'Confirm',
+  cancelText = 'Cancel',
+  type = 'danger',
   onConfirm,
   onCancel,
   loading = false,
 }) {
   if (!isOpen) return null;
 
-  const isDanger = type === "danger";
+  const isDanger = type === 'danger';
 
   return (
-    <div style={{
-      position: "fixed",
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: "rgba(15, 23, 42, 0.6)",
-      backdropFilter: "blur(6px)",
-      display: "flex",
-      justifyContent: "center",
-      alignItems: "center",
-      zIndex: 100,
-      padding: "1rem"
-    }}>
-      <div style={{
-        backgroundColor: "#ffffff",
-        borderRadius: "16px",
-        padding: "1.75rem",
-        width: "100%",
-        maxWidth: "420px",
-        boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
-        animation: "fadeIn 0.15s ease-out"
-      }}>
-        {/* Top Icon & Close */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1rem" }}>
-          <div style={{
-            width: "42px",
-            height: "42px",
-            borderRadius: "12px",
-            backgroundColor: isDanger ? "#fee2e2" : "#eff6ff",
-            color: isDanger ? "#dc2626" : "#2563eb",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center"
-          }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 dark:bg-black/50 backdrop-blur-sm animate-fade-in">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-modal p-6 max-w-sm w-full animate-slide-up">
+        {/* Header Icon + Close */}
+        <div className="flex items-start justify-between mb-3">
+          <div className={`w-11 h-11 rounded-2xl flex items-center justify-center ${
+            isDanger
+              ? 'bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400'
+              : 'bg-brand-100 dark:bg-brand-950/40 text-brand-600 dark:text-brand-400'
+          }`}>
             {isDanger ? <AlertTriangle size={22} /> : <Info size={22} />}
           </div>
-
           <button
             onClick={onCancel}
-            style={{
-              border: "none",
-              background: "none",
-              cursor: "pointer",
-              color: "#94a3b8",
-              padding: "4px"
-            }}
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
           >
-            <X size={18} />
+            <X size={17} />
           </button>
         </div>
 
-        {/* Text Content */}
-        <h3 style={{ fontSize: "1.125rem", fontWeight: "700", color: "#0f172a", marginBottom: "0.4rem" }}>
-          {title}
-        </h3>
-        <p style={{ fontSize: "0.875rem", color: "#64748b", lineHeight: "1.5", marginBottom: "1.5rem" }}>
-          {message}
-        </p>
+        <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-1">{title}</h3>
+        <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-6">{message}</p>
 
-        {/* Buttons */}
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.6rem" }}>
+        <div className="flex gap-3">
           <button
             type="button"
             onClick={onCancel}
             disabled={loading}
-            style={{
-              padding: "0.55rem 1rem",
-              borderRadius: "8px",
-              border: "1px solid #cbd5e1",
-              backgroundColor: "#ffffff",
-              color: "#475569",
-              fontSize: "0.875rem",
-              fontWeight: "600",
-              cursor: "pointer"
-            }}
+            className="flex-1 h-10 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
           >
             {cancelText}
           </button>
@@ -100,21 +52,13 @@ export default function ConfirmModal({
             type="button"
             onClick={onConfirm}
             disabled={loading}
-            style={{
-              padding: "0.55rem 1.25rem",
-              borderRadius: "8px",
-              border: "none",
-              backgroundColor: isDanger ? "#dc2626" : "#2563eb",
-              color: "#ffffff",
-              fontSize: "0.875rem",
-              fontWeight: "600",
-              cursor: "pointer",
-              boxShadow: isDanger
-                ? "0 4px 6px -1px rgba(220, 38, 38, 0.25)"
-                : "0 4px 6px -1px rgba(37, 99, 235, 0.25)"
-            }}
+            className={`flex-1 h-10 rounded-xl text-white text-sm font-semibold transition-all shadow-sm flex items-center justify-center ${
+              isDanger
+                ? 'bg-red-600 hover:bg-red-700 disabled:opacity-60'
+                : 'bg-brand-600 hover:bg-brand-700 disabled:opacity-60'
+            }`}
           >
-            {loading ? "Processing..." : confirmText}
+            {loading ? 'Processing...' : confirmText}
           </button>
         </div>
       </div>

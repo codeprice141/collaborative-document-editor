@@ -1,307 +1,209 @@
-import React, { useState, useEffect, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import { useTheme } from "../context/ThemeContext";
-import { api } from "../services/api";
-import { FileText, LogIn, Sun, Moon, AlertCircle, HelpCircle, X, Check } from "lucide-react";
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
+import { api } from '../services/api';
+import { LogIn, Sun, Moon, AlertCircle, Eye, EyeOff, Layers } from 'lucide-react';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [googleClientId, setGoogleClientId] = useState("");
-  const [showConfigModal, setShowConfigModal] = useState(false);
-  const [customClientIdInput, setCustomClientIdInput] = useState("");
+  const [googleClientId, setGoogleClientId] = useState('');
   const googleBtnRef = useRef(null);
 
   const { login, loginWithGoogle } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
-  // Load OAuth Config & Initialize Google Identity Services (GSI)
   useEffect(() => {
-    const savedClientId = localStorage.getItem("google_client_id");
-    api.getOAuthConfig().then((cfg) => {
-      const activeClientId = cfg?.google_client_id || savedClientId || "";
-      if (activeClientId) {
-        setGoogleClientId(activeClientId);
-        initGoogleGSI(activeClientId);
+    api.getOAuthConfig().then(cfg => {
+      const cid = cfg?.google_client_id || localStorage.getItem('google_client_id') || '';
+      if (cid) {
+        setGoogleClientId(cid);
+        if (window.google?.accounts?.id) {
+          window.google.accounts.id.initialize({
+            client_id: cid,
+            callback: async (res) => {
+              if (!res?.credential) return;
+              setLoading(true);
+              try {
+                await loginWithGoogle(res.credential);
+                navigate('/dashboard');
+              } catch (e) {
+                setError(e.message || 'Google sign-in failed');
+              } finally { setLoading(false); }
+            },
+          });
+          if (googleBtnRef.current) {
+            window.google.accounts.id.renderButton(googleBtnRef.current, {
+              theme: isDark ? 'filled_black' : 'outline',
+              size: 'large',
+              width: 400,
+              shape: 'rectangular',
+            });
+          }
+        }
       }
-    }).catch(() => {
-      if (savedClientId) {
-        setGoogleClientId(savedClientId);
-        initGoogleGSI(savedClientId);
-      }
-    });
+    }).catch(() => {});
   }, [isDark]);
-
-  const initGoogleGSI = (clientId) => {
-    if (window.google?.accounts?.id && clientId) {
-      window.google.accounts.id.initialize({
-        client_id: clientId,
-        callback: handleGoogleCallback,
-      });
-      if (googleBtnRef.current) {
-        window.google.accounts.id.renderButton(googleBtnRef.current, {
-          theme: isDark ? "filled_black" : "outline",
-          size: "large",
-          width: 320,
-          text: "continue_with",
-          shape: "pill",
-        });
-      }
-    }
-  };
-
-  const handleGoogleCallback = async (response) => {
-    if (response?.credential) {
-      setLoading(true);
-      setError("");
-      try {
-        await loginWithGoogle(response.credential);
-        navigate("/dashboard");
-      } catch (err) {
-        setError(err.message || "Google authentication failed.");
-      } finally {
-        setLoading(false);
-      }
-    }
-  };
 
   const handleGoogleClick = () => {
     if (googleClientId && window.google?.accounts?.id) {
       window.google.accounts.id.prompt();
     } else {
-      setShowConfigModal(true);
-    }
-  };
-
-  const handleSaveGoogleClientId = (e) => {
-    e.preventDefault();
-    if (!customClientIdInput.trim()) return;
-    const cid = customClientIdInput.trim();
-    localStorage.setItem("google_client_id", cid);
-    setGoogleClientId(cid);
-    setShowConfigModal(false);
-    initGoogleGSI(cid);
-    setTimeout(() => {
-      if (window.google?.accounts?.id) {
-        window.google.accounts.id.prompt();
+      const cid = prompt('Enter your Google OAuth Client ID to enable Google Sign-In:');
+      if (cid?.trim()) {
+        localStorage.setItem('google_client_id', cid.trim());
+        window.location.reload();
       }
-    }, 300);
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
+    setError('');
     setLoading(true);
-
     try {
       await login(email.trim(), password);
-      navigate("/dashboard");
-    } catch (err) {
-      setError(err.message || "Failed to sign in. Please check your credentials.");
-    } finally {
-      setLoading(false);
-    }
+      navigate('/dashboard');
+    } catch (e) {
+      setError(e.message || 'Invalid email or password');
+    } finally { setLoading(false); }
   };
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "var(--bg-primary)", padding: "1rem", position: "relative" }}>
-      {/* Theme Toggle Top-Right */}
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 p-4 relative">
+      {/* Theme Toggle */}
       <button
         onClick={toggleTheme}
-        style={{
-          position: "absolute", top: "16px", right: "16px",
-          padding: "0.45rem", borderRadius: "10px",
-          border: "1px solid var(--border-color)", backgroundColor: "var(--bg-surface)",
-          color: "var(--text-secondary)", cursor: "pointer"
-        }}
-        title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+        className="absolute top-4 right-4 w-9 h-9 rounded-xl flex items-center justify-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-all shadow-soft"
       >
-        {isDark ? <Sun size={17} color="#fbbf24" /> : <Moon size={17} />}
+        {isDark ? <Sun size={17} className="text-amber-400" /> : <Moon size={17} />}
       </button>
 
-      <div style={{ backgroundColor: "var(--bg-surface)", padding: "2.5rem 2rem", borderRadius: "18px", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)", width: "100%", maxWidth: "420px", border: "1px solid var(--border-color)" }}>
-        <div style={{ textAlign: "center", marginBottom: "1.75rem" }}>
-          <div style={{ display: "inline-flex", padding: "0.75rem", borderRadius: "14px", backgroundColor: "#eff6ff", color: "#2563eb", marginBottom: "0.75rem" }}>
-            <FileText size={30} />
+      <div className="w-full max-w-[400px]">
+        {/* Brand */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 shadow-elevated mb-4">
+            <Layers size={28} className="text-white" />
           </div>
-          <h2 style={{ fontSize: "1.5rem", fontWeight: "800", color: "var(--text-primary)", letterSpacing: "-0.02em" }}>Welcome Back</h2>
-          <p style={{ fontSize: "0.875rem", color: "var(--text-secondary)", marginTop: "0.25rem" }}>Sign in to your CollabEditor account</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50 tracking-tight">
+            Welcome back
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Sign in to continue to AetherDoc
+          </p>
         </div>
 
-        {error && (
-          <div style={{ backgroundColor: "#fef2f2", color: "#b91c1c", padding: "0.75rem", borderRadius: "8px", fontSize: "0.875rem", marginBottom: "1.25rem", border: "1px solid #fee2e2", display: "flex", alignItems: "center", gap: "0.4rem" }}>
-            <AlertCircle size={16} style={{ flexShrink: 0 }} />
-            <span>{error}</span>
-          </div>
-        )}
+        {/* Card */}
+        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-card p-8">
+          {error && (
+            <div className="flex items-center gap-2.5 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-xl px-4 py-3 mb-5 text-sm animate-fade-in">
+              <AlertCircle size={16} className="flex-shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
 
-        {/* Real Google Identity Services (GSI) Button */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1.25rem" }}>
-          <div ref={googleBtnRef} style={{ width: "100%", display: "flex", justifyContent: "center" }}>
-            <button
-              type="button"
-              onClick={handleGoogleClick}
-              disabled={loading}
-              style={{
-                width: "100%",
-                padding: "0.7rem",
-                borderRadius: "10px",
-                border: "1px solid var(--border-color)",
-                backgroundColor: "var(--bg-surface)",
-                color: "var(--text-primary)",
-                fontSize: "0.875rem",
-                fontWeight: "600",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "0.6rem",
-                boxShadow: "0 1px 3px rgba(0,0,0,0.05)"
-              }}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-              </svg>
-              <span>Continue with Google</span>
-            </button>
-          </div>
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", margin: "1.25rem 0", gap: "0.5rem" }}>
-          <div style={{ flex: 1, height: "1px", backgroundColor: "var(--border-color)" }} />
-          <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", textTransform: "uppercase" }}>or email</span>
-          <div style={{ flex: 1, height: "1px", backgroundColor: "var(--border-color)" }} />
-        </div>
-
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-          <div>
-            <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: "600", color: "var(--text-secondary)", marginBottom: "0.35rem" }}>Email Address</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              placeholder="name@example.com"
-              style={{ width: "100%", padding: "0.65rem 0.85rem", borderRadius: "8px", fontSize: "0.9rem", outline: "none" }}
-            />
-          </div>
-
-          <div>
-            <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: "600", color: "var(--text-secondary)", marginBottom: "0.35rem" }}>Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              placeholder="••••••••"
-              style={{ width: "100%", padding: "0.65rem 0.85rem", borderRadius: "8px", fontSize: "0.9rem", outline: "none" }}
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              marginTop: "0.5rem",
-              padding: "0.75rem",
-              backgroundColor: "#2563eb",
-              color: "#ffffff",
-              border: "none",
-              borderRadius: "8px",
-              fontSize: "0.9rem",
-              fontWeight: "600",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "0.5rem",
-              boxShadow: "0 2px 4px rgba(37, 99, 235, 0.2)"
-            }}
-          >
-            <LogIn size={17} />
-            <span>{loading ? "Signing in..." : "Sign In"}</span>
-          </button>
-        </form>
-
-        <div style={{ textAlign: "center", marginTop: "1.5rem", fontSize: "0.85rem", color: "var(--text-secondary)" }}>
-          Don't have an account?{" "}
-          <Link to="/register" style={{ color: "#2563eb", fontWeight: "600" }}>
-            Sign up
-          </Link>
-        </div>
-      </div>
-
-      {/* Google OAuth Setup Helper Modal */}
-      {showConfigModal && (
-        <div style={{
-          position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: "rgba(15, 23, 42, 0.7)", backdropFilter: "blur(6px)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          zIndex: 100, padding: "1rem"
-        }}>
-          <div style={{
-            backgroundColor: "var(--bg-surface)",
-            borderRadius: "18px", padding: "1.75rem",
-            width: "100%", maxWidth: "450px",
-            border: "1px solid var(--border-color)",
-            boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)"
-          }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                <svg width="22" height="22" viewBox="0 0 24 24">
+          {/* Google Sign-In */}
+          <div className="mb-5">
+            <div ref={googleBtnRef}>
+              <button
+                type="button"
+                onClick={handleGoogleClick}
+                disabled={loading}
+                className="w-full h-11 flex items-center justify-center gap-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-750 transition-all shadow-soft disabled:opacity-60"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                   <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
                   <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
                   <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
                 </svg>
-                <h3 style={{ fontSize: "1.1rem", fontWeight: "700", color: "var(--text-primary)" }}>
-                  Google OAuth Configuration
-                </h3>
-              </div>
-              <button onClick={() => setShowConfigModal(false)} style={{ border: "none", background: "none", cursor: "pointer", color: "var(--text-secondary)" }}>
-                <X size={19} />
+                Continue with Google
               </button>
             </div>
+          </div>
 
-            <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", lineHeight: "1.5", marginBottom: "1rem" }}>
-              To enable <strong>Google Sign-In with real Google accounts</strong> on your local server, enter your <strong>Google OAuth Client ID</strong> from Google Cloud Console:
-            </p>
+          {/* Divider */}
+          <div className="flex items-center gap-3 mb-5">
+            <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+            <span className="text-xs font-medium text-slate-400 dark:text-slate-500">or sign in with email</span>
+            <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+          </div>
 
-            <form onSubmit={handleSaveGoogleClientId} style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+          {/* Email Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
+                Email Address
+              </label>
               <input
-                type="text"
-                placeholder="e.g. 123456789-abcdef.apps.googleusercontent.com"
-                value={customClientIdInput}
-                onChange={(e) => setCustomClientIdInput(e.target.value)}
-                style={{ width: "100%", padding: "0.65rem 0.85rem", borderRadius: "8px", fontSize: "0.85rem", outline: "none" }}
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+                placeholder="name@company.com"
+                className="w-full h-11 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 dark:focus:border-brand-400 transition-all"
               />
-
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.5rem", marginTop: "0.5rem" }}>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
+                Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                  placeholder="••••••••"
+                  className="w-full h-11 px-3.5 pr-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 dark:focus:border-brand-400 transition-all"
+                />
                 <button
                   type="button"
-                  onClick={() => setShowConfigModal(false)}
-                  style={{ padding: "0.55rem 1rem", borderRadius: "8px", border: "1px solid var(--border-color)", backgroundColor: "transparent", color: "var(--text-secondary)", cursor: "pointer", fontSize: "0.85rem" }}
+                  onClick={() => setShowPassword(p => !p)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                 >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  style={{ padding: "0.55rem 1.15rem", borderRadius: "8px", border: "none", backgroundColor: "#2563eb", color: "#ffffff", fontWeight: "600", cursor: "pointer", fontSize: "0.85rem" }}
-                >
-                  Save & Connect
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
-            </form>
-          </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full h-11 rounded-xl bg-brand-600 hover:bg-brand-700 disabled:opacity-60 text-white text-sm font-semibold flex items-center justify-center gap-2 transition-all shadow-sm mt-2"
+            >
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                  </svg>
+                  Signing in...
+                </span>
+              ) : (
+                <>
+                  <LogIn size={16} />
+                  Sign In
+                </>
+              )}
+            </button>
+          </form>
         </div>
-      )}
+
+        <p className="text-center text-sm text-slate-500 dark:text-slate-400 mt-5">
+          Don't have an account?{' '}
+          <Link to="/register" className="font-semibold text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 transition-colors">
+            Create one
+          </Link>
+        </p>
+      </div>
     </div>
   );
 }

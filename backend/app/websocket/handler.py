@@ -181,6 +181,32 @@ async def handle_websocket_connection(
                 latency_ms = (time.perf_counter() - op_start_time) * 1000
                 metrics.record_operation(latency_ms)
 
+            # --- Yjs Real-Time CRDT Sync ---
+            elif msg_type == "yjs_update":
+                if role_enum == CollaboratorRole.VIEWER:
+                    await manager.send_personal_message(
+                        {"type": "error", "message": "Viewers cannot edit document"}, websocket
+                    )
+                    continue
+
+                update_b64 = msg.get("update")
+                html_preview = msg.get("html")
+                if html_preview is not None:
+                    doc.content = html_preview
+                    write_buffer.mark_dirty(document_id, content=html_preview)
+
+                if update_b64:
+                    await manager.broadcast_to_room(
+                        document_id,
+                        {
+                            "type": "yjs_broadcast",
+                            "update": update_b64,
+                            "client_id": client_id,
+                            "user_id": user.id,
+                        },
+                        exclude_client_id=client_id,
+                    )
+
             # --- Whiteboard Live Drawing & Vector Shapes (with persistence!) ---
             elif msg_type == "draw":
                 if role_enum == CollaboratorRole.VIEWER:

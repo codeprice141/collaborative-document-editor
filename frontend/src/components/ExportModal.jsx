@@ -1,222 +1,147 @@
-import React, { useRef } from "react";
-import { Download, FileText, Code, Printer, Upload, X } from "lucide-react";
+import React, { useState } from 'react';
+import { X, Download, Upload, FileText, Code } from 'lucide-react';
 
-export default function ExportModal({
-  isOpen,
-  title = "Document",
-  htmlContent = "",
-  onImportContent,
-  onClose
-}) {
-  const fileInputRef = useRef(null);
+export default function ExportModal({ isOpen, title, onClose }) {
+  const [exporting, setExporting] = useState(null);
 
-  if (!isOpen) return null;
+  const handleExport = async (format) => {
+    setExporting(format);
+    try {
+      // Get TipTap editor HTML from DOM
+      const editorEl = document.querySelector('.tiptap-document');
+      const html = editorEl ? editorEl.innerHTML : '';
 
-  // Convert HTML to simple markdown
-  const htmlToMarkdown = (html) => {
-    let md = html
-      .replace(/<h1>(.*?)<\/h1>/gi, "# $1\n\n")
-      .replace(/<h2>(.*?)<\/h2>/gi, "## $1\n\n")
-      .replace(/<h3>(.*?)<\/h3>/gi, "### $1\n\n")
-      .replace(/<blockquote>(.*?)<\/blockquote>/gi, "> $1\n\n")
-      .replace(/<pre><code>(.*?)<\/code><\/pre>/gi, "```\n$1\n```\n\n")
-      .replace(/<ul>(.*?)<\/ul>/gi, "$1\n")
-      .replace(/<li>(.*?)<\/li>/gi, "* $1\n")
-      .replace(/<b>(.*?)<\/b>/gi, "**$1**")
-      .replace(/<strong>(.*?)<\/strong>/gi, "**$1**")
-      .replace(/<i>(.*?)<\/i>/gi, "*$1*")
-      .replace(/<em>(.*?)<\/em>/gi, "*$1*")
-      .replace(/<p>(.*?)<\/p>/gi, "$1\n\n")
-      .replace(/<br\s*[\/]?>/gi, "\n")
-      .replace(/<[^>]+>/g, "");
-    return md.trim();
+      if (format === 'txt') {
+        const text = editorEl ? editorEl.innerText : '';
+        const blob = new Blob([text], { type: 'text/plain' });
+        download(blob, `${title || 'document'}.txt`);
+      } else if (format === 'html') {
+        const fullHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${title || 'Document'}</title>
+<style>
+  body { font-family: Inter, -apple-system, sans-serif; max-width: 860px; margin: 0 auto; padding: 48px 32px; color: #1e293b; }
+  h1 { font-size: 2.25rem; font-weight: 700; margin: 2rem 0 0.75rem; line-height: 1.15; }
+  h2 { font-size: 1.5rem; font-weight: 700; margin: 1.5rem 0 0.5rem; }
+  h3 { font-size: 1.25rem; font-weight: 600; margin: 1.25rem 0 0.5rem; }
+  p { margin: 0.5rem 0; line-height: 1.85; }
+  blockquote { border-left: 3px solid #6366f1; padding-left: 1rem; margin: 1rem 0; color: #64748b; font-style: italic; }
+  code { background: #f1f5f9; padding: 0.1rem 0.35rem; border-radius: 4px; font-family: monospace; font-size: 0.875em; color: #6366f1; }
+  pre { background: #0f172a; color: #e2e8f0; padding: 1.25rem; border-radius: 12px; overflow-x: auto; }
+  pre code { background: none; color: inherit; padding: 0; }
+  ul, ol { margin: 0.75rem 0; padding-left: 1.5rem; }
+  li { margin: 0.25rem 0; line-height: 1.75; }
+  a { color: #4f46e5; }
+  hr { border: none; border-top: 1px solid #e2e8f0; margin: 1.5rem 0; }
+</style>
+</head>
+<body>
+<h1>${title || 'Document'}</h1>
+${html}
+</body>
+</html>`;
+        const blob = new Blob([fullHtml], { type: 'text/html' });
+        download(blob, `${title || 'document'}.html`);
+      } else if (format === 'md') {
+        // Basic HTML to Markdown conversion
+        let md = (title ? `# ${title}\n\n` : '');
+        if (editorEl) {
+          md += htmlToMarkdown(editorEl);
+        }
+        const blob = new Blob([md], { type: 'text/markdown' });
+        download(blob, `${title || 'document'}.md`);
+      }
+    } finally {
+      setExporting(null);
+      onClose();
+    }
   };
 
-  const downloadFile = (content, filename, type) => {
-    const blob = new Blob([content], { type });
+  const download = (blob, filename) => {
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.click();
+    const a = document.createElement('a');
+    a.href = url; a.download = filename; a.click();
     URL.revokeObjectURL(url);
   };
 
-  const handleExportMarkdown = () => {
-    const md = htmlToMarkdown(htmlContent);
-    downloadFile(md, `${title.replace(/\s+/g, "_")}.md`, "text/markdown;charset=utf-8");
+  const htmlToMarkdown = (el) => {
+    let md = '';
+    el.childNodes.forEach(node => {
+      if (node.nodeType === 3) { md += node.textContent; return; }
+      const tag = node.tagName?.toLowerCase();
+      if (tag === 'h1') md += `# ${node.textContent}\n\n`;
+      else if (tag === 'h2') md += `## ${node.textContent}\n\n`;
+      else if (tag === 'h3') md += `### ${node.textContent}\n\n`;
+      else if (tag === 'p') md += `${node.textContent}\n\n`;
+      else if (tag === 'blockquote') md += `> ${node.textContent}\n\n`;
+      else if (tag === 'ul') {
+        node.querySelectorAll('li').forEach(li => { md += `- ${li.textContent}\n`; });
+        md += '\n';
+      } else if (tag === 'ol') {
+        node.querySelectorAll('li').forEach((li, i) => { md += `${i + 1}. ${li.textContent}\n`; });
+        md += '\n';
+      } else if (tag === 'pre') md += `\`\`\`\n${node.textContent}\n\`\`\`\n\n`;
+      else if (tag === 'hr') md += `---\n\n`;
+    });
+    return md;
   };
 
-  const handleExportHTML = () => {
-    const fullHtml = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>${title}</title>
-  <style>
-    body { font-family: system-ui, -apple-system, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; line-height: 1.6; color: #1e293b; }
-    h1, h2, h3 { color: #0f172a; }
-    blockquote { border-left: 3px solid #cbd5e1; margin: 1em 0; padding-left: 1em; color: #64748b; font-style: italic; }
-    pre { background: #f1f5f9; padding: 1em; border-radius: 8px; overflow-x: auto; }
-  </style>
-</head>
-<body>
-  <h1>${title}</h1>
-  ${htmlContent}
-</body>
-</html>`;
-    downloadFile(fullHtml, `${title.replace(/\s+/g, "_")}.html`, "text/html;charset=utf-8");
-  };
+  if (!isOpen) return null;
 
-  const handlePrintPDF = () => {
-    window.print();
-  };
-
-  const handleFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target.result;
-      if (text && onImportContent) {
-        // Convert simple markdown/plain text to HTML paragraphs
-        const paragraphs = text
-          .split("\n\n")
-          .map((p) => `<p>${p.replace(/\n/g, "<br>")}</p>`)
-          .join("");
-        onImportContent(paragraphs);
-        onClose();
-      }
-    };
-    reader.readAsText(file);
-  };
+  const formats = [
+    { id: 'txt', label: 'Plain Text', desc: '.txt — No formatting, pure text', icon: FileText, color: 'text-slate-500' },
+    { id: 'html', label: 'HTML', desc: '.html — Formatted web page', icon: Code, color: 'text-brand-500' },
+    { id: 'md', label: 'Markdown', desc: '.md — GitHub-flavored Markdown', icon: FileText, color: 'text-emerald-500' },
+  ];
 
   return (
-    <div style={{
-      position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-      backgroundColor: "rgba(15, 23, 42, 0.6)",
-      backdropFilter: "blur(6px)",
-      display: "flex", justifyContent: "center", alignItems: "center",
-      zIndex: 100, padding: "1rem"
-    }}>
-      <div style={{
-        backgroundColor: "#ffffff", borderRadius: "16px", padding: "1.75rem",
-        width: "100%", maxWidth: "460px",
-        boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)"
-      }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <Download size={20} color="#2563eb" />
-            <h3 style={{ fontSize: "1.125rem", fontWeight: "700", color: "#0f172a" }}>Export & Import Document</h3>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 dark:bg-black/50 backdrop-blur-sm animate-fade-in">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-modal w-full max-w-md animate-slide-up">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800">
+          <div className="flex items-center gap-2">
+            <Download size={17} className="text-brand-600 dark:text-brand-400" />
+            <h2 className="font-semibold text-slate-900 dark:text-slate-100">Export Document</h2>
           </div>
-          <button onClick={onClose} style={{ border: "none", background: "none", cursor: "pointer", color: "#94a3b8" }}>
-            <X size={18} />
+          <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+            <X size={17} />
           </button>
         </div>
 
-        {/* Export Options Grid */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1.5rem" }}>
-          <button
-            onClick={handleExportMarkdown}
-            style={exportBtnStyle}
-            onMouseEnter={(e) => e.currentTarget.style.borderColor = "#93c5fd"}
-            onMouseLeave={(e) => e.currentTarget.style.borderColor = "#e2e8f0"}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-              <div style={{ padding: "0.4rem", borderRadius: "8px", backgroundColor: "#eff6ff", color: "#2563eb" }}>
-                <FileText size={18} />
+        <div className="px-6 py-5 space-y-2.5">
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Choose export format:</p>
+          {formats.map(fmt => (
+            <button
+              key={fmt.id}
+              onClick={() => handleExport(fmt.id)}
+              disabled={!!exporting}
+              className="w-full flex items-center gap-3.5 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 hover:border-brand-300 dark:hover:border-brand-600 hover:bg-brand-50 dark:hover:bg-brand-950/20 transition-all disabled:opacity-60 text-left group"
+            >
+              <div className={`w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0 group-hover:bg-white dark:group-hover:bg-slate-700 transition-colors`}>
+                <fmt.icon size={20} className={fmt.color} />
               </div>
-              <div style={{ textAlign: "left" }}>
-                <div style={{ fontSize: "0.875rem", fontWeight: "700", color: "#0f172a" }}>Markdown (.md)</div>
-                <div style={{ fontSize: "0.75rem", color: "#64748b" }}>Clean plain-text markdown file</div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{fmt.label}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{fmt.desc}</p>
               </div>
-            </div>
-            <Download size={16} color="#94a3b8" />
-          </button>
-
-          <button
-            onClick={handleExportHTML}
-            style={exportBtnStyle}
-            onMouseEnter={(e) => e.currentTarget.style.borderColor = "#93c5fd"}
-            onMouseLeave={(e) => e.currentTarget.style.borderColor = "#e2e8f0"}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-              <div style={{ padding: "0.4rem", borderRadius: "8px", backgroundColor: "#f0fdf4", color: "#16a34a" }}>
-                <Code size={18} />
-              </div>
-              <div style={{ textAlign: "left" }}>
-                <div style={{ fontSize: "0.875rem", fontWeight: "700", color: "#0f172a" }}>HTML Document (.html)</div>
-                <div style={{ fontSize: "0.75rem", color: "#64748b" }}>Self-contained web page</div>
-              </div>
-            </div>
-            <Download size={16} color="#94a3b8" />
-          </button>
-
-          <button
-            onClick={handlePrintPDF}
-            style={exportBtnStyle}
-            onMouseEnter={(e) => e.currentTarget.style.borderColor = "#93c5fd"}
-            onMouseLeave={(e) => e.currentTarget.style.borderColor = "#e2e8f0"}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-              <div style={{ padding: "0.4rem", borderRadius: "8px", backgroundColor: "#faf5ff", color: "#9333ea" }}>
-                <Printer size={18} />
-              </div>
-              <div style={{ textAlign: "left" }}>
-                <div style={{ fontSize: "0.875rem", fontWeight: "700", color: "#0f172a" }}>Print / PDF Export</div>
-                <div style={{ fontSize: "0.75rem", color: "#64748b" }}>Formatted printable document</div>
-              </div>
-            </div>
-            <Printer size={16} color="#94a3b8" />
-          </button>
+              {exporting === fmt.id && (
+                <svg className="animate-spin w-4 h-4 text-brand-500 flex-shrink-0" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                </svg>
+              )}
+            </button>
+          ))}
         </div>
 
-        {/* Import Section */}
-        <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: "1rem" }}>
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileChange}
-            accept=".md,.txt,.html"
-            style={{ display: "none" }}
-          />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            style={{
-              width: "100%",
-              padding: "0.65rem",
-              borderRadius: "10px",
-              border: "1px dashed #cbd5e1",
-              backgroundColor: "#f8fafc",
-              color: "#334155",
-              fontSize: "0.875rem",
-              fontWeight: "600",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "0.5rem"
-            }}
-          >
-            <Upload size={16} />
-            <span>Import Markdown / Text File</span>
+        <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-800">
+          <button onClick={onClose} className="w-full h-10 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
+            Cancel
           </button>
         </div>
       </div>
     </div>
   );
 }
-
-const exportBtnStyle = {
-  width: "100%",
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  padding: "0.75rem",
-  borderRadius: "12px",
-  border: "1px solid #e2e8f0",
-  backgroundColor: "#ffffff",
-  cursor: "pointer",
-  transition: "all 0.15s ease"
-};

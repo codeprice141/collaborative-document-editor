@@ -1,9 +1,9 @@
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import { useTheme } from "../context/ThemeContext";
-import ConfirmModal from "./ConfirmModal";
-import { Layers, LogOut, Sun, Moon, Sparkles } from "lucide-react";
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
+import ConfirmModal from './ConfirmModal';
+import { Layers, LogOut, Sun, Moon } from 'lucide-react';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -13,135 +13,61 @@ export default function Navbar() {
 
   const handleLogout = () => {
     logout();
-    navigate("/login");
+    navigate('/login');
   };
+
+  const userInitials = (user?.full_name || user?.email || 'U').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 
   return (
     <>
-      <header style={{
-        backgroundColor: "var(--bg-surface)",
-        borderBottom: "1px solid var(--border-color)",
-        padding: "0.75rem 1.5rem",
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        boxShadow: "var(--shadow-sm)"
-      }}>
-        {/* Brand Logo & SaaS Name */}
-        <Link
-          to="/dashboard"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.65rem",
-            textDecoration: "none",
-            color: "var(--text-primary)"
-          }}
-        >
-          <div style={{
-            width: "36px",
-            height: "36px",
-            borderRadius: "10px",
-            background: "linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)",
-            color: "#ffffff",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            boxShadow: "0 4px 12px -2px rgba(59, 130, 246, 0.35)"
-          }}>
-            <Layers size={19} />
+      <header className="h-14 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 flex items-center justify-between shadow-soft">
+        {/* Brand */}
+        <Link to="/dashboard" className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center text-white shadow-sm">
+            <Layers size={17} />
           </div>
-          <div>
-            <div style={{ fontWeight: "800", fontSize: "1.15rem", letterSpacing: "-0.03em", color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "0.3rem" }}>
-              <span>AetherDoc</span>
-              <span style={{ fontSize: "0.65rem", padding: "1px 5px", borderRadius: "4px", backgroundColor: "var(--accent-glow)", color: "var(--accent-color)", fontWeight: "700" }}>PRO</span>
-            </div>
+          <div className="flex items-center gap-1.5">
+            <span className="font-bold text-base text-slate-900 dark:text-slate-100 tracking-tight">AetherDoc</span>
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-brand-100 dark:bg-brand-900/40 text-brand-700 dark:text-brand-300">PRO</span>
           </div>
         </Link>
 
-        {/* Actions: Theme Toggle & User Profile */}
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-          {/* Theme Toggle Button */}
+        {/* User Profile & Actions */}
+        <div className="flex items-center gap-3">
           <button
             onClick={toggleTheme}
-            style={{
-              padding: "0.45rem",
-              borderRadius: "9px",
-              border: "1px solid var(--border-color)",
-              backgroundColor: "var(--bg-surface)",
-              color: "var(--text-secondary)",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              transition: "all 0.15s ease"
-            }}
-            title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
+            title={isDark ? 'Light mode' : 'Dark mode'}
           >
-            {isDark ? <Sun size={17} color="#fbbf24" /> : <Moon size={17} />}
+            {isDark ? <Sun size={16} className="text-amber-400" /> : <Moon size={16} />}
           </button>
 
           {user && (
-            <div style={{ display: "flex", alignItems: "center", gap: "0.65rem" }}>
-              <div style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.45rem",
-                padding: "0.3rem 0.65rem",
-                borderRadius: "9999px",
-                backgroundColor: "var(--bg-primary)",
-                border: "1px solid var(--border-color)"
-              }}>
-                <div style={{
-                  width: "24px",
-                  height: "24px",
-                  borderRadius: "50%",
-                  backgroundColor: "var(--accent-color)",
-                  color: "#ffffff",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontWeight: "700",
-                  fontSize: "0.75rem"
-                }}>
-                  {user.full_name?.charAt(0)?.toUpperCase() || "U"}
-                </div>
-                <span style={{ fontSize: "0.8125rem", fontWeight: "600", color: "var(--text-primary)" }}>
-                  {user.full_name}
-                </span>
+            <div className="flex items-center gap-2 pl-2 border-l border-slate-200 dark:border-slate-700">
+              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-xs font-bold text-white shadow-sm">
+                {userInitials}
               </div>
-
+              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 hidden sm:block">
+                {user.full_name || user.email}
+              </span>
               <button
                 onClick={() => setShowLogoutConfirm(true)}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.35rem",
-                  padding: "0.45rem 0.75rem",
-                  borderRadius: "9px",
-                  border: "1px solid var(--border-color)",
-                  backgroundColor: "var(--bg-surface)",
-                  color: "var(--text-secondary)",
-                  fontSize: "0.8125rem",
-                  fontWeight: "500",
-                  cursor: "pointer"
-                }}
-                title="Logout"
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all"
+                title="Sign out"
               >
-                <LogOut size={15} />
-                <span className="hidden-mobile">Sign Out</span>
+                <LogOut size={14} />
               </button>
             </div>
           )}
         </div>
       </header>
 
-      {/* Logout Confirmation Modal */}
       <ConfirmModal
         isOpen={showLogoutConfirm}
-        title="Sign Out of AetherDoc?"
-        message="Are you sure you want to sign out? Your document edits and real-time state are safely persisted."
+        title="Sign Out"
+        message="Are you sure you want to sign out of your AetherDoc session?"
         confirmText="Sign Out"
+        cancelText="Stay"
         type="danger"
         onConfirm={handleLogout}
         onCancel={() => setShowLogoutConfirm(false)}
