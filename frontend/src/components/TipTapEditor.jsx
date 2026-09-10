@@ -48,9 +48,19 @@ export default function TipTapEditor({
       TaskList,
       TaskItem.configure({ nested: true }),
       Placeholder.configure({
-        placeholder: ({ node }) => {
+        placeholder: ({ node, pos, editor }) => {
           if (node.type.name === 'heading') return 'Heading...';
-          return 'Start writing your document... use the toolbar for styling';
+          // Only show placeholder on the very first line when the document is empty
+          if (pos === 0 && editor.isEmpty) {
+            return 'Start writing your document... use the toolbar for styling';
+          }
+          return '';
+        },
+        emptyNodeClass: ({ node, pos, editor }) => {
+          if ((pos === 0 && editor.isEmpty) || node.type.name === 'heading') {
+            return 'is-empty';
+          }
+          return '';
         },
       }),
       CharacterCount,
