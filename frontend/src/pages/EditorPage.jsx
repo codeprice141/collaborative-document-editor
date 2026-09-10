@@ -78,7 +78,8 @@ export default function EditorPage() {
     syncHtmlContent,
   } = useCollaboration(docId, handleRemoteDraw, handleRemoteComment);
 
-  const isReadOnly = userRole === 'viewer';
+  const effectiveRole = (docMeta?.user_role || userRole || 'editor').toLowerCase();
+  const isReadOnly = effectiveRole === 'viewer';
 
   // Online / Offline tracking
   useEffect(() => {
@@ -196,6 +197,13 @@ export default function EditorPage() {
               className="text-sm sm:text-base font-semibold text-slate-900 dark:text-slate-100 bg-transparent border border-transparent rounded-lg px-1.5 py-0.5 min-w-0 max-w-[140px] sm:max-w-[220px] md:max-w-[340px] focus:outline-none focus:border-brand-300 dark:focus:border-brand-600 focus:bg-slate-50 dark:focus:bg-slate-800 transition-all"
             />
             <SyncIndicator />
+            <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+              isReadOnly
+                ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+                : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+            }`}>
+              {effectiveRole === 'owner' ? 'Owner' : effectiveRole === 'editor' ? 'Editor' : 'Viewer (Read-Only)'}
+            </span>
           </div>
         </div>
 
@@ -229,7 +237,13 @@ export default function EditorPage() {
         <div className="flex items-center gap-1.5 flex-shrink-0">
           {/* Active Collaborator Avatars */}
           {activeUsers.length > 0 && (
-            <div className="hidden sm:flex items-center -space-x-1.5 mr-1">
+            <div
+              onClick={() => docMeta?.user_role === 'owner' && setShowShare(true)}
+              className={`hidden sm:flex items-center -space-x-1.5 mr-1 ${
+                docMeta?.user_role === 'owner' ? 'cursor-pointer hover:opacity-90' : ''
+              }`}
+              title={docMeta?.user_role === 'owner' ? 'Click to manage collaborators & permissions' : 'Active collaborators'}
+            >
               {activeUsers.slice(0, 4).map((u, i) => (
                 <div
                   key={u.client_id || i}
@@ -371,7 +385,7 @@ export default function EditorPage() {
           docId={docId}
           isPublic={docMeta?.is_public}
           publicRole={docMeta?.public_role}
-          collaborators={collaborators}
+          collaborators={docMeta?.collaborators || []}
           onClose={() => setShowShare(false)}
           onShared={fetchDoc}
         />

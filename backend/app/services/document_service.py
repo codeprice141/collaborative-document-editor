@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import logging
 from typing import List, Optional, Tuple
 from sqlalchemy.orm import Session
 from app.models.document import (
@@ -9,6 +10,8 @@ from app.models.document import (
     CollaboratorRole,
 )
 from app.schemas.document import DocumentCreate, DocumentUpdate
+
+logger = logging.getLogger(__name__)
 
 
 class DocumentService:

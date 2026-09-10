@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.api.deps import get_current_user
 from app.models.user import User
-from app.models.document import CollaboratorRole
+from app.models.document import CollaboratorRole, DocumentCollaborator
 from app.services.document_service import DocumentService
 from app.services.auth_service import AuthService
 from app.schemas.document import (
@@ -89,6 +89,29 @@ def get_document(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Document not found or access denied.",
         )
+
+    # If accessed via public link, record user as collaborator so owner can see and manage them
+    if doc.is_public and current_user.id != doc.owner_id:
+        existing = (
+            db.query(DocumentCollaborator)
+            .filter(
+                DocumentCollaborator.document_id == doc_id,
+                DocumentCollaborator.user_id == current_user.id,
+            )
+            .first()
+        )
+        if not existing:
+            try:
+                new_collab = DocumentCollaborator(
+                    document_id=doc_id,
+                    user_id=current_user.id,
+                    role=role.value if hasattr(role, "value") else str(role),
+                )
+                db.add(new_collab)
+                db.commit()
+                db.refresh(doc)
+            except Exception:
+                db.rollback()
     return {
         "id": doc.id,
         "title": doc.title,

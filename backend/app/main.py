@@ -30,17 +30,8 @@ async def lifespan(app: FastAPI):
     logger.info("Initializing database tables for %s...", settings.PROJECT_NAME)
     try:
         Base.metadata.create_all(bind=engine)
-        # Non-destructive auto-migrations
-        with engine.connect() as conn:
-            conn.execute(text("ALTER TABLE documents ADD COLUMN IF NOT EXISTS drawing_data TEXT DEFAULT '[]'"))
-            conn.execute(text("ALTER TABLE document_snapshots ADD COLUMN IF NOT EXISTS drawing_data TEXT DEFAULT '[]'"))
-            conn.execute(text("ALTER TABLE documents ADD COLUMN IF NOT EXISTS is_public BOOLEAN DEFAULT FALSE"))
-            conn.execute(text("ALTER TABLE documents ADD COLUMN IF NOT EXISTS public_role VARCHAR(32) DEFAULT 'viewer'"))
-            conn.execute(text("ALTER TABLE document_collaborators ALTER COLUMN role TYPE VARCHAR(32) USING role::text"))
-            conn.execute(text("ALTER TABLE documents ALTER COLUMN public_role TYPE VARCHAR(32) USING public_role::text"))
-            conn.commit()
     except Exception as exc:
-        logger.warning("Auto-migration check on startup: %s", exc)
+        logger.warning("Database init check on startup: %s", exc)
 
     # Start background Write-Behind flusher task
     flusher_task = asyncio.create_task(write_buffer.start_background_flusher())

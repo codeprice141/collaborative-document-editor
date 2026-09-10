@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { UserPlus, Sun, Moon, AlertCircle, Eye, EyeOff, Layers } from 'lucide-react';
@@ -14,6 +14,8 @@ export default function RegisterPage() {
   const { register } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from ? (location.state.from.pathname + (location.state.from.search || '')) : '/dashboard';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -22,7 +24,7 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       await register(email.trim(), password, fullName.trim());
-      navigate('/dashboard');
+      navigate(from, { replace: true });
     } catch (e) {
       setError(e.message || 'Registration failed. Email may already be in use.');
     } finally { setLoading(false); }
@@ -115,7 +117,7 @@ export default function RegisterPage() {
 
         <p className="text-center text-sm text-slate-500 dark:text-slate-400 mt-5">
           Already have an account?{' '}
-          <Link to="/login" className="font-semibold text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 transition-colors">
+          <Link to="/login" state={location.state} className="font-semibold text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 transition-colors">
             Sign in
           </Link>
         </p>

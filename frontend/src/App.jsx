@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import LoginPage from './pages/LoginPage';
@@ -9,6 +9,7 @@ import EditorPage from './pages/EditorPage';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
+  const location = useLocation();
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
@@ -22,7 +23,7 @@ function ProtectedRoute({ children }) {
       </div>
     );
   }
-  return user ? children : <Navigate to="/login" replace />;
+  return user ? children : <Navigate to="/login" state={{ from: location }} replace />;
 }
 
 function PublicRoute({ children }) {

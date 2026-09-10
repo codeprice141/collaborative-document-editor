@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { api } from '../services/api';
@@ -17,6 +17,8 @@ export default function LoginPage() {
   const { login, loginWithGoogle } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from ? (location.state.from.pathname + (location.state.from.search || '')) : '/dashboard';
 
   useEffect(() => {
     api.getOAuthConfig().then(cfg => {
@@ -31,7 +33,7 @@ export default function LoginPage() {
               setLoading(true);
               try {
                 await loginWithGoogle(res.credential);
-                navigate('/dashboard');
+                navigate(from, { replace: true });
               } catch (e) {
                 setError(e.message || 'Google sign-in failed');
               } finally { setLoading(false); }
@@ -68,7 +70,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(email.trim(), password);
-      navigate('/dashboard');
+      navigate(from, { replace: true });
     } catch (e) {
       setError(e.message || 'Invalid email or password');
     } finally { setLoading(false); }
@@ -199,7 +201,7 @@ export default function LoginPage() {
 
         <p className="text-center text-sm text-slate-500 dark:text-slate-400 mt-5">
           Don't have an account?{' '}
-          <Link to="/register" className="font-semibold text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 transition-colors">
+          <Link to="/register" state={location.state} className="font-semibold text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 transition-colors">
             Create one
           </Link>
         </p>
