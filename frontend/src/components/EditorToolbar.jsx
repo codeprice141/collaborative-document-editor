@@ -45,12 +45,12 @@ function ToolBtn({ active, onClick, title, disabled, children, className = '' })
       disabled={disabled}
       title={title}
       className={`
-        flex items-center justify-center w-8 h-8 rounded-lg text-sm transition-all duration-100 flex-shrink-0
+        flex items-center justify-center w-7 h-7 rounded-md text-xs transition-colors shrink-0
         ${active
-          ? 'bg-brand-100 text-brand-700 dark:bg-brand-900/50 dark:text-brand-300'
-          : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'
+          ? 'bg-secondary text-foreground font-semibold'
+          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
         }
-        ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}
+        ${disabled ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}
         ${className}
       `}
     >
@@ -60,7 +60,7 @@ function ToolBtn({ active, onClick, title, disabled, children, className = '' })
 }
 
 function Divider() {
-  return <div className="w-px h-5 bg-slate-200 dark:bg-slate-700 flex-shrink-0" />;
+  return <div className="w-px h-4 bg-border shrink-0 my-auto mx-1" />;
 }
 
 function ColorPickerDropdown({ label, icon, colors, onSelect, onCustom, activeColor, type = 'text' }) {
@@ -207,14 +207,8 @@ export default function EditorToolbar({ editor }) {
   };
 
   return (
-    <div className="flex-shrink-0 sticky top-0 z-20">
-      <div className="mx-auto my-3 max-w-[860px] px-4 sm:px-8">
-        <div className="
-          flex items-center gap-1 flex-wrap
-          bg-white dark:bg-slate-900
-          border border-slate-200 dark:border-slate-700
-          rounded-2xl px-3 py-1.5 shadow-card
-        ">
+    <div className="shrink-0 sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur-md">
+      <div className="mx-auto max-w-5xl px-4 sm:px-6 py-1.5 flex items-center gap-1 overflow-x-auto no-scrollbar">
           {/* History */}
           <ToolBtn onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()} title="Undo (Ctrl+Z)">
             <Undo size={15} />
@@ -328,6 +322,5 @@ export default function EditorToolbar({ editor }) {
           </ToolBtn>
         </div>
       </div>
-    </div>
   );
 }

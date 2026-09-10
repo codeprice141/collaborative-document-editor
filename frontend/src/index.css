@@ -5,6 +5,51 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --background: 210 20% 98%;
+    --foreground: 224 71.4% 4.1%;
+    --card: 0 0% 100%;
+    --card-foreground: 224 71.4% 4.1%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 224 71.4% 4.1%;
+    --primary: 224 71.4% 4.1%;
+    --primary-foreground: 210 20% 98%;
+    --secondary: 220 14.3% 95.9%;
+    --secondary-foreground: 220.9 39.3% 11%;
+    --muted: 220 14.3% 95.9%;
+    --muted-foreground: 220 8.9% 46.1%;
+    --accent: 220 14.3% 95.9%;
+    --accent-foreground: 220.9 39.3% 11%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 20% 98%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 224 71.4% 4.1%;
+    --radius: 0.625rem;
+  }
+
+  .dark {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 5.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 5.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 10% 3.9%;
+    --secondary: 240 4.8% 13%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 4.8% 13%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 4.8% 13%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 4.5% 15.5%;
+    --input: 240 4.5% 15.5%;
+    --ring: 240 5% 64.9%;
+  }
+
   *, *::before, *::after {
     box-sizing: border-box;
   }
@@ -16,8 +61,9 @@
   }
 
   body {
-    @apply bg-slate-50 text-slate-900 font-sans;
-    @apply dark:bg-slate-950 dark:text-slate-50;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   }
 
   /* Custom Scrollbar */
@@ -38,80 +84,97 @@
 @layer components {
   /* TipTap Prose Document Styles */
   .tiptap-document {
-    @apply outline-none min-h-[600px] text-slate-900 dark:text-slate-100;
-    @apply text-[1.0625rem] leading-[1.85];
-    font-family: 'Inter', -apple-system, sans-serif;
+    @apply outline-none min-h-[650px];
+    color: hsl(var(--foreground));
+    font-size: 1.0625rem;
+    line-height: 1.8;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
   }
 
   .tiptap-document h1 {
-    @apply text-4xl font-bold mt-8 mb-3 text-slate-900 dark:text-slate-50 tracking-tight leading-tight;
+    @apply font-bold mt-8 mb-4 tracking-tight leading-tight;
+    font-size: 2.25rem;
+    color: hsl(var(--foreground));
   }
   .tiptap-document h2 {
-    @apply text-2xl font-bold mt-6 mb-2 text-slate-900 dark:text-slate-50 tracking-tight;
+    @apply font-bold mt-7 mb-3 tracking-tight;
+    font-size: 1.5rem;
+    color: hsl(var(--foreground));
   }
   .tiptap-document h3 {
-    @apply text-xl font-semibold mt-5 mb-2 text-slate-800 dark:text-slate-100;
+    @apply font-semibold mt-5 mb-2 tracking-tight;
+    font-size: 1.25rem;
+    color: hsl(var(--foreground));
   }
   .tiptap-document h4 {
-    @apply text-lg font-semibold mt-4 mb-1 text-slate-800 dark:text-slate-100;
+    @apply font-semibold mt-4 mb-1;
+    font-size: 1rem;
+    color: hsl(var(--foreground));
   }
 
   .tiptap-document p {
-    @apply my-2 text-slate-800 dark:text-slate-200;
+    @apply my-2.5 font-normal;
+    color: hsl(var(--foreground) / 0.9);
   }
 
   .tiptap-document p.is-empty[data-placeholder]:not([data-placeholder=""])::before {
-    @apply text-slate-400 dark:text-slate-500 pointer-events-none;
+    @apply pointer-events-none;
+    color: hsl(var(--muted-foreground) / 0.6);
     content: attr(data-placeholder);
     float: left;
     height: 0;
   }
 
   .tiptap-document blockquote {
-    @apply border-l-4 border-brand-400 pl-4 py-1 my-4 text-slate-600 dark:text-slate-400 italic;
-    @apply bg-brand-50 dark:bg-brand-900/20 rounded-r-lg;
+    @apply pl-4 py-1 my-5 italic font-normal;
+    border-left: 2px solid hsl(var(--foreground) / 0.3);
+    color: hsl(var(--muted-foreground));
   }
 
   .tiptap-document code {
-    @apply bg-slate-100 dark:bg-slate-800 text-brand-600 dark:text-brand-400;
-    @apply px-1.5 py-0.5 rounded text-[0.875em] font-mono;
+    @apply px-1.5 py-0.5 rounded-md text-[0.85em] font-mono font-medium;
+    background-color: hsl(var(--muted));
+    color: hsl(var(--foreground));
+    border: 1px solid hsl(var(--border) / 0.6);
   }
 
   .tiptap-document pre {
-    @apply bg-slate-900 dark:bg-slate-950 text-slate-100 rounded-xl p-5 my-4 overflow-x-auto;
-    @apply border border-slate-800;
+    @apply bg-zinc-950 text-zinc-100 rounded-xl p-5 my-5 overflow-x-auto;
+    @apply border border-zinc-800 shadow-sm font-mono text-sm leading-relaxed;
   }
 
   .tiptap-document pre code {
-    @apply bg-transparent text-inherit p-0 text-sm;
+    @apply bg-transparent text-inherit p-0 border-0;
   }
 
   .tiptap-document ul {
-    @apply list-disc ml-6 my-3 space-y-1;
+    @apply list-disc ml-6 my-3 space-y-1.5;
   }
 
   .tiptap-document ol {
-    @apply list-decimal ml-6 my-3 space-y-1;
+    @apply list-decimal ml-6 my-3 space-y-1.5;
   }
 
   .tiptap-document li {
-    @apply text-slate-800 dark:text-slate-200;
+    color: hsl(var(--foreground) / 0.9);
   }
 
   .tiptap-document ul[data-type="taskList"] {
-    @apply list-none ml-0;
+    @apply list-none ml-0 space-y-1.5;
   }
 
   .tiptap-document ul[data-type="taskList"] li {
-    @apply flex items-start gap-2;
+    @apply flex items-start gap-2.5;
   }
 
   .tiptap-document ul[data-type="taskList"] li label {
-    @apply flex items-center gap-2 cursor-pointer mt-0.5;
+    @apply flex items-center gap-2 cursor-pointer mt-1;
   }
 
   .tiptap-document ul[data-type="taskList"] li input[type="checkbox"] {
-    @apply w-4 h-4 rounded border-slate-300 text-brand-600 cursor-pointer;
+    @apply w-4 h-4 rounded cursor-pointer;
+    border: 1px solid hsl(var(--border));
+    accent-color: hsl(var(--primary));
   }
 
   .tiptap-document hr {

@@ -3,7 +3,18 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import ConfirmModal from './ConfirmModal';
-import { Layers, LogOut, Sun, Moon } from 'lucide-react';
+import { Layers, LogOut, Sun, Moon, User } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -16,48 +27,82 @@ export default function Navbar() {
     navigate('/login');
   };
 
-  const userInitials = (user?.full_name || user?.email || 'U').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  const userInitials = (user?.full_name || user?.email || 'U')
+    .split(' ')
+    .map(w => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
 
   return (
     <>
-      <header className="h-14 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 flex items-center justify-between shadow-soft">
+      <header className="h-14 bg-card border-b border-border px-4 sm:px-6 flex items-center justify-between shadow-soft">
         {/* Brand */}
-        <Link to="/dashboard" className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center text-white shadow-sm">
-            <Layers size={17} />
+        <Link to="/dashboard" className="flex items-center gap-2.5 group">
+          <div className="w-7 h-7 rounded-lg bg-foreground text-background flex items-center justify-center shadow-xs transition-transform group-hover:scale-105">
+            <Layers size={15} strokeWidth={2.2} />
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="font-bold text-base text-slate-900 dark:text-slate-100 tracking-tight">AetherDoc</span>
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-brand-100 dark:bg-brand-900/40 text-brand-700 dark:text-brand-300">PRO</span>
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-sm text-foreground tracking-tight">
+              AetherDoc
+            </span>
+            <Badge variant="secondary" className="text-[10px] h-4 px-1.5 font-medium text-muted-foreground">
+              v1.0
+            </Badge>
           </div>
         </Link>
 
         {/* User Profile & Actions */}
-        <div className="flex items-center gap-3">
-          <button
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={toggleTheme}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
             title={isDark ? 'Light mode' : 'Dark mode'}
           >
             {isDark ? <Sun size={16} className="text-amber-400" /> : <Moon size={16} />}
-          </button>
+          </Button>
 
           {user && (
-            <div className="flex items-center gap-2 pl-2 border-l border-slate-200 dark:border-slate-700">
-              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-xs font-bold text-white shadow-sm">
-                {userInitials}
-              </div>
-              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 hidden sm:block">
-                {user.full_name || user.email}
-              </span>
-              <button
-                onClick={() => setShowLogoutConfirm(true)}
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all"
-                title="Sign out"
-              >
-                <LogOut size={14} />
-              </button>
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="h-8 px-2 gap-2 rounded-lg text-xs font-medium hover:bg-muted"
+                >
+                  <Avatar className="h-6 w-6 border border-border">
+                    <AvatarFallback className="bg-secondary text-foreground text-[10px] font-semibold">
+                      {userInitials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="hidden sm:inline-block max-w-[130px] truncate text-foreground font-medium">
+                    {user.full_name || user.email}
+                  </span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-semibold leading-none">{user.full_name || 'User'}</p>
+                    <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={toggleTheme} className="cursor-pointer gap-2">
+                  {isDark ? <Sun size={14} className="text-amber-400" /> : <Moon size={14} />}
+                  <span>{isDark ? 'Light Theme' : 'Dark Theme'}</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => setShowLogoutConfirm(true)}
+                  className="cursor-pointer gap-2 text-destructive focus:text-destructive focus:bg-destructive/10"
+                >
+                  <LogOut size={14} />
+                  <span>Sign Out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
       </header>
