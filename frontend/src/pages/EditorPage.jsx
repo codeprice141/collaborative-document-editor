@@ -16,6 +16,9 @@ import {
   MessageSquare, Download, Sun, Moon, WifiOff,
   CheckCircle, Loader2, Edit3,
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 // Lazy load Excalidraw only when Whiteboard tab is active
 const ExcalidrawBoard = lazy(() => import('../components/ExcalidrawBoard'));
@@ -143,49 +146,47 @@ export default function EditorPage() {
 
   const collaborators = docMeta?.collaborators || [];
 
-  // Sync status pill
+  // Sync status indicator
   const SyncIndicator = () => {
     if (connectionStatus === 'connected') {
       return (
-        <span className="hidden sm:flex items-center gap-1 text-xs font-medium text-emerald-500">
-          <CheckCircle size={13} />
-          Synced
+        <span className="hidden md:inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground/70">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+          <span>Saved</span>
         </span>
       );
     }
     return (
-      <span className="hidden sm:flex items-center gap-1 text-xs font-medium text-amber-500">
-        <Loader2 size={13} className="animate-spin" />
-        Connecting...
+      <span className="hidden md:inline-flex items-center gap-1.5 text-[11px] font-medium text-amber-500/90">
+        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
+        <span>Syncing...</span>
       </span>
     );
   };
 
   return (
-    <div className="h-[100dvh] flex flex-col bg-slate-50 dark:bg-slate-950 overflow-hidden">
+    <div className="h-[100dvh] flex flex-col bg-background text-foreground overflow-hidden">
       {/* Offline Banner */}
       {!isOnline && (
-        <div className="flex items-center justify-center gap-2 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-800 py-1.5 px-4 text-xs font-semibold text-amber-700 dark:text-amber-400">
+        <div className="flex items-center justify-center gap-2 bg-amber-500/10 border-b border-amber-500/20 py-1.5 px-4 text-xs font-semibold text-amber-600 dark:text-amber-400">
           <WifiOff size={13} />
           Working offline — changes will sync when reconnected
         </div>
       )}
 
       {/* Header Bar */}
-      <header className="flex-shrink-0 h-14 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center px-3 sm:px-4 gap-2 sm:gap-3 z-30 shadow-soft">
+      <header className="flex-shrink-0 h-14 bg-card border-b border-border flex items-center px-3 sm:px-4 gap-2 sm:gap-3 z-30 shadow-xs">
         {/* Back Link */}
-        <Link
-          to="/dashboard"
-          className="flex items-center justify-center w-8 h-8 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 transition-colors flex-shrink-0"
-          title="Back to Dashboard"
-        >
-          <ArrowLeft size={18} />
-        </Link>
+        <Button asChild variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+          <Link to="/dashboard" title="Back to Dashboard">
+            <ArrowLeft size={17} />
+          </Link>
+        </Button>
 
         {/* Brand & Document Title */}
         <div className="flex items-center gap-2 min-w-0 flex-1">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center flex-shrink-0 shadow-sm">
-            <Edit3 size={14} className="text-white" />
+          <div className="w-7 h-7 rounded-lg bg-secondary border border-border flex items-center justify-center shrink-0 text-foreground/80">
+            <FileText size={14} strokeWidth={1.75} />
           </div>
           <div className="min-w-0 flex items-center gap-2">
             <input
@@ -194,47 +195,34 @@ export default function EditorPage() {
               onChange={handleTitleChange}
               disabled={isReadOnly}
               placeholder="Untitled Document"
-              className="text-sm sm:text-base font-semibold text-slate-900 dark:text-slate-100 bg-transparent border border-transparent rounded-lg px-1.5 py-0.5 min-w-0 max-w-[140px] sm:max-w-[220px] md:max-w-[340px] focus:outline-none focus:border-brand-300 dark:focus:border-brand-600 focus:bg-slate-50 dark:focus:bg-slate-800 transition-all"
+              className="text-sm sm:text-base font-semibold text-foreground bg-transparent border border-transparent rounded-lg px-1.5 py-0.5 min-w-0 max-w-[140px] sm:max-w-[220px] md:max-w-[340px] focus:outline-none focus:border-border focus:bg-muted/40 transition-all hover:bg-muted/20"
             />
             <SyncIndicator />
-            <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
-              isReadOnly
-                ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
-                : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
-            }`}>
-              {effectiveRole === 'owner' ? 'Owner' : effectiveRole === 'editor' ? 'Editor' : 'Viewer (Read-Only)'}
+            <span className="hidden sm:inline-flex items-center text-[11px] font-medium text-muted-foreground bg-secondary border border-border px-2 py-0.5 rounded-md shrink-0">
+              <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${isReadOnly ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+              {effectiveRole === 'owner' ? 'Owner' : effectiveRole === 'editor' ? 'Editor' : 'Viewer'}
             </span>
           </div>
         </div>
 
         {/* Tab Switcher: Document vs Whiteboard */}
-        <div className="flex-shrink-0 flex items-center gap-0.5 bg-slate-100 dark:bg-slate-800 rounded-xl p-1">
-          <button
-            onClick={() => setActiveTab('doc')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              activeTab === 'doc'
-                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-soft'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-            }`}
-          >
-            <FileText size={14} />
-            <span className="hidden sm:inline">Document</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('canvas')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              activeTab === 'canvas'
-                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-soft'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-            }`}
-          >
-            <Palette size={14} />
-            <span className="hidden sm:inline">Whiteboard</span>
-          </button>
+        <div className="shrink-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="h-8 p-0.5">
+              <TabsTrigger value="doc" className="text-xs h-7 px-2.5 gap-1.5">
+                <FileText size={13} />
+                <span className="hidden sm:inline">Document</span>
+              </TabsTrigger>
+              <TabsTrigger value="canvas" className="text-xs h-7 px-2.5 gap-1.5">
+                <Palette size={13} />
+                <span className="hidden sm:inline">Whiteboard</span>
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
 
         {/* Right Navigation Actions */}
-        <div className="flex items-center gap-1.5 flex-shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0">
           {/* Active Collaborator Avatars */}
           {activeUsers.length > 0 && (
             <div
@@ -247,7 +235,7 @@ export default function EditorPage() {
               {activeUsers.slice(0, 4).map((u, i) => (
                 <div
                   key={u.client_id || i}
-                  className="w-7 h-7 rounded-full border-2 border-white dark:border-slate-900 flex items-center justify-center text-[10px] font-bold text-white shadow-sm"
+                  className="w-7 h-7 rounded-full border-2 border-background flex items-center justify-center text-[10px] font-bold text-white shadow-sm"
                   style={{ backgroundColor: u.color || '#6366f1' }}
                   title={u.name || 'Collaborator'}
                 >
@@ -255,7 +243,7 @@ export default function EditorPage() {
                 </div>
               ))}
               {activeUsers.length > 4 && (
-                <div className="w-7 h-7 rounded-full border-2 border-white dark:border-slate-900 bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-600 dark:text-slate-300 shadow-sm">
+                <div className="w-7 h-7 rounded-full border-2 border-background bg-muted flex items-center justify-center text-[10px] font-bold text-muted-foreground shadow-sm">
                   +{activeUsers.length - 4}
                 </div>
               )}
@@ -263,58 +251,63 @@ export default function EditorPage() {
           )}
 
           {/* Theme Switcher */}
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={toggleTheme}
-            className="flex items-center justify-center w-8 h-8 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
             title={isDark ? 'Light mode' : 'Dark mode'}
           >
-            {isDark ? <Sun size={16} className="text-amber-400" /> : <Moon size={16} />}
-          </button>
+            {isDark ? <Sun size={15} className="text-amber-400" /> : <Moon size={15} />}
+          </Button>
 
           {/* Comments Toggle */}
-          <button
+          <Button
+            variant={showComments ? 'secondary' : 'ghost'}
+            size="sm"
             onClick={() => setShowComments((s) => !s)}
-            className={`flex items-center gap-1.5 px-2.5 h-8 rounded-lg text-xs font-semibold transition-all ${
-              showComments
-                ? 'bg-brand-100 dark:bg-brand-900/40 text-brand-700 dark:text-brand-300'
-                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100'
-            }`}
+            className="h-8 px-2.5 gap-1.5 text-xs font-semibold"
             title="Comments"
           >
-            <MessageSquare size={15} />
+            <MessageSquare size={14} />
             <span className="hidden md:inline">Comments</span>
-          </button>
+          </Button>
 
           {/* Export Button */}
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => setShowExport(true)}
-            className="hidden sm:flex items-center gap-1.5 px-2.5 h-8 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 transition-all"
+            className="hidden sm:inline-flex h-8 px-2.5 gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
             title="Export"
           >
-            <Download size={15} />
+            <Download size={14} />
             <span className="hidden md:inline">Export</span>
-          </button>
+          </Button>
 
           {/* History Button */}
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => setShowHistory(true)}
-            className="hidden sm:flex items-center gap-1.5 px-2.5 h-8 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 transition-all"
+            className="hidden sm:inline-flex h-8 px-2.5 gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
             title="Version History"
           >
-            <History size={15} />
+            <History size={14} />
             <span className="hidden md:inline">History</span>
-          </button>
+          </Button>
 
           {/* Share Modal Trigger (Owner only) */}
           {docMeta?.user_role === 'owner' && (
-            <button
+            <Button
+              size="sm"
               onClick={() => setShowShare(true)}
-              className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-semibold bg-brand-600 hover:bg-brand-700 text-white transition-colors shadow-sm"
+              className="h-8 px-3 gap-1.5 text-xs font-semibold shadow-sm"
               title="Share"
             >
               <Share2 size={14} />
               <span className="hidden sm:inline">Share</span>
-            </button>
+            </Button>
           )}
         </div>
       </header>
