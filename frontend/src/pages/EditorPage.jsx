@@ -101,6 +101,7 @@ export default function EditorPage() {
 
   const effectiveRole = (docMeta?.user_role || userRole || 'editor').toLowerCase();
   const isReadOnly = effectiveRole === 'viewer';
+  const canEditTitle = docMeta?.user_role === 'owner';
 
   // Online / Offline tracking
   useEffect(() => {
@@ -132,15 +133,16 @@ export default function EditorPage() {
     fetchDoc();
   }, [docId]);
 
-  // Auto-save title changes with debouncing
+  // Auto-save title changes with debouncing (Owner only)
   const titleSaveTimer = useRef(null);
   const handleTitleChange = (e) => {
+    if (!canEditTitle) return;
     const val = e.target.value;
     setTitle(val);
     setTitleState('saving');
     clearTimeout(titleSaveTimer.current);
     titleSaveTimer.current = setTimeout(async () => {
-      if (!val.trim() || isReadOnly) return;
+      if (!val.trim() || !canEditTitle) return;
       try {
         await api.updateDocument(docId, { title: val.trim() });
         setTitleState('saved');
@@ -272,27 +274,28 @@ export default function EditorPage() {
       )}
 
       {/* Header Bar */}
-      <header className="flex-shrink-0 h-14 bg-card border-b border-border flex items-center px-3 sm:px-4 gap-2 sm:gap-3 z-30 shadow-xs">
-        {/* Back Link */}
-        <Button asChild variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-          <Link to="/dashboard" title="Back to Dashboard">
-            <ArrowLeft size={17} />
-          </Link>
-        </Button>
+      <header className="flex-shrink-0 h-14 bg-card border-b border-border flex items-center justify-between px-3 sm:px-4 gap-2 sm:gap-3 z-30 shadow-xs">
+        {/* Left: Back Link & Document Title */}
+        <div className="flex items-center gap-2 min-w-0">
+          <Button asChild variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0">
+            <Link to="/dashboard" title="Back to Dashboard">
+              <ArrowLeft size={17} />
+            </Link>
+          </Button>
 
-        {/* Brand & Document Title */}
-        <div className="flex items-center gap-2 min-w-0 flex-1">
-          <div className="w-7 h-7 rounded-lg bg-secondary border border-border flex items-center justify-center shrink-0 text-foreground/80">
-            <FileText size={14} strokeWidth={1.75} />
-          </div>
           <div className="min-w-0 flex items-center gap-2">
             <input
               type="text"
               value={title}
               onChange={handleTitleChange}
-              disabled={isReadOnly}
+              disabled={!canEditTitle}
               placeholder="Untitled Document"
-              className="text-sm sm:text-base font-semibold text-foreground bg-transparent border border-transparent rounded-lg px-1.5 py-0.5 min-w-0 max-w-[140px] sm:max-w-[220px] md:max-w-[340px] focus:outline-none focus:border-border focus:bg-muted/40 transition-all hover:bg-muted/20"
+              title={canEditTitle ? 'Click to rename' : 'Only document owner can rename document'}
+              className={`text-sm sm:text-base font-semibold text-foreground bg-transparent rounded-lg px-1.5 py-0.5 min-w-0 max-w-[140px] sm:max-w-[220px] md:max-w-[320px] transition-all ${
+                canEditTitle
+                  ? 'border border-transparent hover:bg-muted/30 focus:outline-none focus:border-border focus:bg-muted/50 cursor-text'
+                  : 'border-transparent cursor-default select-none'
+              }`}
             />
             <SyncIndicator />
             <span className="hidden sm:inline-flex items-center text-[11px] font-medium text-muted-foreground bg-secondary border border-border px-2 py-0.5 rounded-md shrink-0">
@@ -302,7 +305,7 @@ export default function EditorPage() {
           </div>
         </div>
 
-        {/* Tab Switcher: Document vs Whiteboard */}
+        {/* Center: Tab Switcher (Document vs Whiteboard) */}
         <div className="shrink-0">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="h-8 p-0.5">
@@ -318,8 +321,8 @@ export default function EditorPage() {
           </Tabs>
         </div>
 
-        {/* Right Navigation Actions */}
-        <div className="flex items-center gap-1.5 shrink-0">
+        {/* Right: Actions & Tools */}
+        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
           {/* Active Collaborator Avatars */}
           {activeUsers.length > 0 && (
             <div
@@ -347,6 +350,36 @@ export default function EditorPage() {
             </div>
           )}
 
+          {/* Comments Toggle (Icon-only) */}
+          <Button
+            variant={showComments ? 'secondary' : 'ghost'}
+            size="icon"
+            onClick={() => {
+              setShowComments((s) => !s);
+              setUnreadCommentsCount(0);
+            }}
+            className="relative h-8 w-8 text-muted-foreground hover:text-foreground"
+            title="Comments"
+          >
+            <MessageSquare size={16} />
+            {unreadCommentsCount > 0 && !showComments && (
+              <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-brand-600 text-[10px] font-bold text-white shadow-xs animate-in zoom-in">
+                {unreadCommentsCount}
+              </span>
+            )}
+          </Button>
+
+          {/* Export Button (Icon-only) */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowExport(true)}
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+            title="Export document"
+          >
+            <Download size={16} />
+          </Button>
+
           {/* Theme Switcher */}
           <Button
             variant="ghost"
@@ -355,49 +388,16 @@ export default function EditorPage() {
             className="h-8 w-8 text-muted-foreground hover:text-foreground"
             title={isDark ? 'Light mode' : 'Dark mode'}
           >
-            {isDark ? <Sun size={15} className="text-amber-400" /> : <Moon size={15} />}
+            {isDark ? <Sun size={16} className="text-amber-400" /> : <Moon size={16} />}
           </Button>
-
-          {/* Comments Toggle */}
-          <Button
-            variant={showComments ? 'secondary' : 'ghost'}
-            size="sm"
-            onClick={() => {
-              setShowComments((s) => !s);
-              setUnreadCommentsCount(0);
-            }}
-            className="relative h-8 px-2.5 gap-1.5 text-xs font-semibold"
-            title="Comments"
-          >
-            <MessageSquare size={14} />
-            <span className="hidden md:inline">Comments</span>
-            {unreadCommentsCount > 0 && !showComments && (
-              <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-brand-600 text-[10px] font-bold text-white shadow-xs animate-in zoom-in">
-                {unreadCommentsCount}
-              </span>
-            )}
-          </Button>
-
-          {/* Export Button */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowExport(true)}
-            className="hidden sm:inline-flex h-8 px-2.5 gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
-            title="Export"
-          >
-            <Download size={14} />
-            <span className="hidden md:inline">Export</span>
-          </Button>
-
 
           {/* Share Modal Trigger (Owner only) */}
           {docMeta?.user_role === 'owner' && (
             <Button
               size="sm"
               onClick={() => setShowShare(true)}
-              className="h-8 px-3 gap-1.5 text-xs font-semibold shadow-sm"
-              title="Share"
+              className="h-8 px-3 gap-1.5 text-xs font-semibold shadow-sm ml-1"
+              title="Share document"
             >
               <Share2 size={14} />
               <span className="hidden sm:inline">Share</span>
