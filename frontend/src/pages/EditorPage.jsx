@@ -274,9 +274,9 @@ export default function EditorPage() {
       )}
 
       {/* Header Bar */}
-      <header className="flex-shrink-0 h-14 bg-card border-b border-border flex items-center justify-between px-3 sm:px-4 gap-2 sm:gap-3 z-30 shadow-xs">
+      <header className="flex-shrink-0 h-14 bg-card border-b border-border flex items-center justify-between px-3 sm:px-4 gap-2 sm:gap-3 z-30 shadow-xs relative">
         {/* Left: Back Link & Document Title */}
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-2 min-w-0 z-10 max-w-[45%]">
           <Button asChild variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0">
             <Link to="/dashboard" title="Back to Dashboard">
               <ArrowLeft size={17} />
@@ -291,38 +291,49 @@ export default function EditorPage() {
               disabled={!canEditTitle}
               placeholder="Untitled Document"
               title={canEditTitle ? 'Click to rename' : 'Only document owner can rename document'}
-              className={`text-sm sm:text-base font-semibold text-foreground bg-transparent rounded-lg px-1.5 py-0.5 min-w-0 max-w-[140px] sm:max-w-[220px] md:max-w-[320px] transition-all ${
+              className={`text-sm sm:text-base font-semibold text-foreground bg-transparent rounded-lg px-2 py-0.5 min-w-0 max-w-[130px] sm:max-w-[190px] md:max-w-[260px] truncate transition-all ${
                 canEditTitle
                   ? 'border border-transparent hover:bg-muted/30 focus:outline-none focus:border-border focus:bg-muted/50 cursor-text'
                   : 'border-transparent cursor-default select-none'
               }`}
             />
             <SyncIndicator />
-            <span className="hidden sm:inline-flex items-center text-[11px] font-medium text-muted-foreground bg-secondary border border-border px-2 py-0.5 rounded-md shrink-0">
-              <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${isReadOnly ? 'bg-amber-500' : 'bg-emerald-500'}`} />
-              {effectiveRole === 'owner' ? 'Owner' : effectiveRole === 'editor' ? 'Editor' : 'Viewer'}
-            </span>
+            {isReadOnly ? (
+              <span className="hidden sm:inline-flex items-center text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-md shrink-0">
+                View only
+              </span>
+            ) : effectiveRole !== 'owner' ? (
+              <span className="hidden sm:inline-flex items-center text-[10px] font-medium text-muted-foreground bg-secondary border border-border px-1.5 py-0.5 rounded-md shrink-0">
+                Editor
+              </span>
+            ) : null}
           </div>
         </div>
 
-        {/* Center: Tab Switcher (Document vs Whiteboard) */}
-        <div className="shrink-0">
+        {/* Center: Tab Switcher (Document vs Whiteboard) — Perfectly Centered & Icon-only */}
+        <div className="absolute left-1/2 -translate-x-1/2 z-10">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="h-8 p-0.5">
-              <TabsTrigger value="doc" className="text-xs h-7 px-2.5 gap-1.5">
-                <FileText size={13} />
-                <span className="hidden sm:inline">Document</span>
+            <TabsList className="h-8 p-0.5 bg-secondary/80 border border-border/60">
+              <TabsTrigger
+                value="doc"
+                className="h-7 w-8 p-0 flex items-center justify-center text-muted-foreground data-[state=active]:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-xs rounded-md transition-all"
+                title="Document editor"
+              >
+                <FileText size={15} />
               </TabsTrigger>
-              <TabsTrigger value="canvas" className="text-xs h-7 px-2.5 gap-1.5">
-                <Palette size={13} />
-                <span className="hidden sm:inline">Whiteboard</span>
+              <TabsTrigger
+                value="canvas"
+                className="h-7 w-8 p-0 flex items-center justify-center text-muted-foreground data-[state=active]:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-xs rounded-md transition-all"
+                title="Whiteboard canvas"
+              >
+                <Palette size={15} />
               </TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
 
         {/* Right: Actions & Tools */}
-        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 z-10">
           {/* Active Collaborator Avatars */}
           {activeUsers.length > 0 && (
             <div
@@ -380,7 +391,7 @@ export default function EditorPage() {
             <Download size={16} />
           </Button>
 
-          {/* Theme Switcher */}
+          {/* Theme Switcher (Icon-only) */}
           <Button
             variant="ghost"
             size="icon"
@@ -391,16 +402,16 @@ export default function EditorPage() {
             {isDark ? <Sun size={16} className="text-amber-400" /> : <Moon size={16} />}
           </Button>
 
-          {/* Share Modal Trigger (Owner only) */}
+          {/* Share Modal Trigger (Icon-only) */}
           {docMeta?.user_role === 'owner' && (
             <Button
-              size="sm"
+              variant="ghost"
+              size="icon"
               onClick={() => setShowShare(true)}
-              className="h-8 px-3 gap-1.5 text-xs font-semibold shadow-sm ml-1"
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
               title="Share document"
             >
-              <Share2 size={14} />
-              <span className="hidden sm:inline">Share</span>
+              <Share2 size={16} />
             </Button>
           )}
         </div>
