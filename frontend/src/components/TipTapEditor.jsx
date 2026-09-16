@@ -147,9 +147,9 @@ export default function TipTapEditor({
             <span>Ready</span>
           </div>
           <div className="flex items-center gap-2">
-            <span>{stats.words} words</span>
+            <span>{wordCount} words</span>
             <span className="text-muted-foreground/40">·</span>
-            <span>{stats.characters} characters</span>
+            <span>{charCount} characters</span>
           </div>
         </div>
       )}

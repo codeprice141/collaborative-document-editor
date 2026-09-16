@@ -1,17 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { X, Share2, Link, Globe, Lock, Copy, UserPlus, Check, ChevronDown, Trash2, Loader2 } from 'lucide-react';
+import { Share2, Link, Globe, Lock, Copy, UserPlus, Check, Trash2, Loader2 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Separator } from '@/components/ui/separator';
 
 const ROLE_OPTIONS = ['viewer', 'editor'];
 
-function Avatar({ name = '' }) {
-  const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-  const colors = ['from-blue-400 to-blue-600','from-violet-400 to-violet-600','from-emerald-400 to-emerald-600','from-rose-400 to-rose-600'];
-  const color = colors[name.charCodeAt(0) % colors.length];
+function UserAvatar({ name = '', email = '' }) {
+  const displayName = name || email || 'User';
+  const initials = displayName
+    .split(' ')
+    .map(w => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
   return (
-    <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${color} flex items-center justify-center text-white text-xs font-bold flex-shrink-0`}>
-      {initials || '?'}
-    </div>
+    <Avatar className="h-8 w-8 shrink-0">
+      <AvatarFallback className="bg-brand-100 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 text-xs font-bold">
+        {initials || 'U'}
+      </AvatarFallback>
+    </Avatar>
   );
 }
 
@@ -25,7 +43,14 @@ function normalizeCollabs(list) {
   }));
 }
 
-export default function ShareModal({ docId, isPublic, publicRole, collaborators: initialCollabs = [], onClose, onShared }) {
+export default function ShareModal({
+  docId,
+  isPublic,
+  publicRole,
+  collaborators: initialCollabs = [],
+  onClose,
+  onShared,
+}) {
   const [collaborators, setCollaborators] = useState(() => normalizeCollabs(initialCollabs));
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('editor');
@@ -36,7 +61,6 @@ export default function ShareModal({ docId, isPublic, publicRole, collaborators:
   const [copied, setCopied] = useState(false);
   const [removing, setRemoving] = useState(null);
 
-  // Auto-fetch fresh collaborators list on open
   useEffect(() => {
     async function loadFreshCollabs() {
       try {
@@ -87,7 +111,9 @@ export default function ShareModal({ docId, isPublic, publicRole, collaborators:
       onShared?.();
     } catch (e) {
       setInviteError(e.message || 'Could not find user with that email');
-    } finally { setInviting(false); }
+    } finally {
+      setInviting(false);
+    }
   };
 
   const handleRemove = async (userId) => {
@@ -96,7 +122,11 @@ export default function ShareModal({ docId, isPublic, publicRole, collaborators:
       await api.removeCollaborator(docId, userId);
       setCollaborators(prev => prev.filter(c => c.id !== userId && c.user_id !== userId));
       onShared?.();
-    } catch { /* silent */ } finally { setRemoving(null); }
+    } catch {
+      /* silent */
+    } finally {
+      setRemoving(null);
+    }
   };
 
   const handleTogglePublic = async () => {
@@ -105,7 +135,9 @@ export default function ShareModal({ docId, isPublic, publicRole, collaborators:
     try {
       await api.updateDocument(docId, { is_public: next, public_role: publicRoleState });
       onShared?.();
-    } catch { setIsPublicState(!next); }
+    } catch {
+      setIsPublicState(!next);
+    }
   };
 
   const handlePublicRoleChange = async (newRole) => {
@@ -121,7 +153,7 @@ export default function ShareModal({ docId, isPublic, publicRole, collaborators:
   const handleChangeRole = async (email, newRole) => {
     try {
       await api.addCollaborator(docId, email, newRole);
-      setCollaborators(prev => prev.map(c => c.email === email ? { ...c, role: newRole } : c));
+      setCollaborators(prev => prev.map(c => (c.email === email ? { ...c, role: newRole } : c)));
       onShared?.();
     } catch (e) {
       console.error('Failed to change collaborator role:', e);
@@ -129,53 +161,58 @@ export default function ShareModal({ docId, isPublic, publicRole, collaborators:
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 dark:bg-black/50 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-modal w-full max-w-md animate-slide-up">
+    <Dialog open={true} onOpenChange={(open) => { if (!open) onClose?.(); }}>
+      <DialogContent className="max-w-md p-0 gap-0 overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800">
+        <DialogHeader className="px-6 py-4 border-b border-border text-left">
           <div className="flex items-center gap-2">
-            <Share2 size={17} className="text-brand-600 dark:text-brand-400" />
-            <h2 className="font-semibold text-slate-900 dark:text-slate-100">Share Document</h2>
+            <div className="w-8 h-8 rounded-xl bg-brand-50 dark:bg-brand-950/50 flex items-center justify-center text-brand-600 dark:text-brand-400">
+              <Share2 size={16} />
+            </div>
+            <DialogTitle className="text-base">Share Document</DialogTitle>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
-            <X size={17} />
-          </button>
-        </div>
+        </DialogHeader>
 
-        <div className="px-6 py-5 space-y-5">
+        <div className="px-6 py-5 space-y-5 max-h-[75vh] overflow-y-auto">
           {/* Copy Link */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2">Document Link</label>
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+              Document Link
+            </label>
             <div className="flex gap-2">
-              <div className="flex-1 h-10 flex items-center px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 overflow-hidden">
-                <Link size={13} className="text-slate-400 flex-shrink-0 mr-2" />
-                <span className="text-xs text-slate-500 dark:text-slate-400 truncate">{shareUrl}</span>
+              <div className="flex-1 h-10 flex items-center px-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-input overflow-hidden">
+                <Link size={13} className="text-muted-foreground shrink-0 mr-2" />
+                <span className="text-xs text-muted-foreground truncate">{shareUrl}</span>
               </div>
-              <button
+              <Button
+                variant={copied ? 'default' : 'outline'}
+                size="sm"
                 onClick={handleCopy}
-                className={`flex items-center gap-1.5 h-10 px-3 rounded-xl text-xs font-semibold flex-shrink-0 transition-all ${
-                  copied
-                    ? 'bg-emerald-500 text-white'
-                    : 'border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
-                }`}
+                className={`shrink-0 h-10 px-3.5 gap-1.5 ${copied ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''}`}
               >
-                {copied ? <><Check size={13} />Copied!</> : <><Copy size={13} />Copy</>}
-              </button>
+                {copied ? <><Check size={14} />Copied</> : <><Copy size={14} />Copy</>}
+              </Button>
             </div>
           </div>
 
           {/* Public Access Toggle */}
-          <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
+          <div className="p-4 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-border space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${isPublicState ? 'bg-emerald-100 dark:bg-emerald-950/40' : 'bg-slate-200 dark:bg-slate-700'}`}>
-                  {isPublicState ? <Globe size={16} className="text-emerald-600 dark:text-emerald-400" /> : <Lock size={16} className="text-slate-500 dark:text-slate-400" />}
+                <div
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+                    isPublicState
+                      ? 'bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400'
+                      : 'bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+                  }`}
+                >
+                  {isPublicState ? <Globe size={16} /> : <Lock size={16} />}
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                    {isPublicState ? 'Public link' : 'Private'}
+                    {isPublicState ? 'Public Link' : 'Private'}
                   </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                  <p className="text-xs text-muted-foreground">
                     {isPublicState ? 'Anyone with the link can access' : 'Only invited collaborators'}
                   </p>
                 </div>
@@ -183,19 +220,25 @@ export default function ShareModal({ docId, isPublic, publicRole, collaborators:
               <button
                 type="button"
                 onClick={handleTogglePublic}
-                className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${isPublicState ? 'bg-brand-600' : 'bg-slate-300 dark:bg-slate-600'}`}
+                className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${
+                  isPublicState ? 'bg-brand-600' : 'bg-slate-300 dark:bg-slate-700'
+                }`}
               >
-                <div className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${isPublicState ? 'translate-x-5' : 'translate-x-0'}`} />
+                <div
+                  className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${
+                    isPublicState ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
               </button>
             </div>
 
             {isPublicState && (
-              <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-700 text-xs">
-                <span className="text-slate-600 dark:text-slate-400 font-medium">Link permissions:</span>
+              <div className="flex items-center justify-between pt-2.5 border-t border-border text-xs">
+                <span className="text-muted-foreground font-medium">Link permissions:</span>
                 <select
                   value={publicRoleState}
                   onChange={e => handlePublicRoleChange(e.target.value)}
-                  className="h-8 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition-all cursor-pointer"
+                  className="h-8 px-2.5 rounded-lg border border-input bg-white dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/30 cursor-pointer"
                 >
                   <option value="editor">Editor (Anyone can edit)</option>
                   <option value="viewer">Viewer (Read-only)</option>
@@ -205,76 +248,95 @@ export default function ShareModal({ docId, isPublic, publicRole, collaborators:
           </div>
 
           {/* Invite */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2">Invite Collaborator</label>
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+              Invite Collaborator
+            </label>
             {inviteError && (
-              <p className="text-xs text-red-600 dark:text-red-400 mb-2">{inviteError}</p>
+              <p className="text-xs text-destructive">{inviteError}</p>
             )}
             <form onSubmit={handleInvite} className="flex gap-2">
-              <input
+              <Input
                 type="email"
                 value={inviteEmail}
                 onChange={e => setInviteEmail(e.target.value)}
-                placeholder="Email address..."
-                className="flex-1 h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition-all"
+                placeholder="colleague@company.com"
+                className="flex-1"
               />
               <select
                 value={inviteRole}
                 onChange={e => setInviteRole(e.target.value)}
-                className="h-10 px-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition-all"
+                className="h-10 px-3 rounded-xl border border-input bg-background text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500/30 cursor-pointer"
               >
-                {ROLE_OPTIONS.map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
+                {ROLE_OPTIONS.map(r => (
+                  <option key={r} value={r}>
+                    {r.charAt(0).toUpperCase() + r.slice(1)}
+                  </option>
+                ))}
               </select>
-              <button
+              <Button
                 type="submit"
                 disabled={!inviteEmail.trim() || inviting}
-                className="h-10 px-3 rounded-xl bg-brand-600 hover:bg-brand-700 disabled:opacity-60 text-white text-xs font-semibold flex items-center gap-1.5 flex-shrink-0 transition-all shadow-sm"
+                className="gap-1.5 shrink-0"
               >
                 {inviting ? <Loader2 size={13} className="animate-spin" /> : <UserPlus size={13} />}
-                {inviting ? '' : 'Invite'}
-              </button>
+                Invite
+              </Button>
             </form>
           </div>
 
           {/* Collaborators List */}
           {collaborators.length > 0 && (
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2">
-                Collaborators ({collaborators.length})
-              </label>
-              <div className="space-y-2 max-h-44 overflow-y-auto">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                  Collaborators ({collaborators.length})
+                </label>
+              </div>
+              <div className="space-y-1 max-h-48 overflow-y-auto pr-1">
                 {collaborators.map(c => (
-                  <div key={c.id} className="flex items-center justify-between gap-2 p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                  <div
+                    key={c.id}
+                    className="flex items-center justify-between gap-2 p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
+                  >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <Avatar name={c.full_name || c.email || ''} />
+                      <UserAvatar name={c.full_name} email={c.email} />
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{c.full_name || c.email}</p>
-                        <p className="text-xs text-slate-400 dark:text-slate-500 truncate">{c.email}</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">
+                          {c.full_name || c.email}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">{c.email}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
+                    <div className="flex items-center gap-2 shrink-0">
                       {c.role === 'owner' ? (
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-300">
+                        <Badge variant="secondary" className="text-[10px] px-2 py-0.5">
                           Owner
-                        </span>
+                        </Badge>
                       ) : (
                         <select
                           value={c.role || 'viewer'}
                           onChange={e => handleChangeRole(c.email, e.target.value)}
-                          className="h-6 px-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-[11px] font-semibold text-slate-700 dark:text-slate-300 cursor-pointer focus:outline-none focus:ring-1 focus:ring-brand-500"
+                          className="h-7 px-2 rounded-lg border border-input bg-background text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer focus:outline-none focus:ring-1 focus:ring-brand-500"
                         >
                           <option value="editor">Editor</option>
                           <option value="viewer">Viewer</option>
                         </select>
                       )}
                       {c.role !== 'owner' && (
-                        <button
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={() => handleRemove(c.id)}
                           disabled={removing === c.id}
-                          className="w-6 h-6 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all disabled:opacity-40"
+                          className="h-7 w-7 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                         >
-                          {removing === c.id ? <Loader2 size={11} className="animate-spin" /> : <Trash2 size={11} />}
-                        </button>
+                          {removing === c.id ? (
+                            <Loader2 size={12} className="animate-spin" />
+                          ) : (
+                            <Trash2 size={12} />
+                          )}
+                        </Button>
                       )}
                     </div>
                   </div>
@@ -285,15 +347,12 @@ export default function ShareModal({ docId, isPublic, publicRole, collaborators:
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end px-6 py-4 border-t border-slate-200 dark:border-slate-800">
-          <button
-            onClick={onClose}
-            className="h-9 px-5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold transition-all shadow-sm"
-          >
+        <DialogFooter className="px-6 py-3.5 bg-slate-50/50 dark:bg-slate-900/50 border-t border-border sm:justify-end">
+          <Button onClick={onClose} size="sm" className="px-6">
             Done
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
