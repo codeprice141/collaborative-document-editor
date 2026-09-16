@@ -38,6 +38,7 @@ export default function CollaboratorDock({
             user_id: currentUser.id,
             name: currentUser.full_name || currentUser.name || 'You',
             email: currentUser.email,
+            avatar_url: currentUser.avatar_url,
             color: '#6366f1',
           },
         ]
@@ -94,6 +95,7 @@ export default function CollaboratorDock({
               {displayUsers.map((u, i) => {
                 const isTyping = typingUsers.includes(u.user_id);
                 const isMe = currentUser && (u.user_id === currentUser.id || u.email === currentUser.email);
+                const userAvatar = u.avatar_url || (isMe && currentUser?.avatar_url);
                 return (
                   <div
                     key={u.client_id || u.user_id || i}
@@ -101,10 +103,18 @@ export default function CollaboratorDock({
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <div
-                        className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white shadow-xs shrink-0"
+                        className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white shadow-xs shrink-0 overflow-hidden"
                         style={{ backgroundColor: u.color || '#6366f1' }}
                       >
-                        {(u.name || u.full_name || 'U').charAt(0).toUpperCase()}
+                        {userAvatar ? (
+                          <img
+                            src={userAvatar}
+                            alt={u.name || u.full_name || 'User'}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          (u.name || u.full_name || 'U').charAt(0).toUpperCase()
+                        )}
                       </div>
                       <div className="min-w-0">
                         <p className="text-xs font-medium text-foreground truncate flex items-center gap-1">
@@ -159,15 +169,23 @@ export default function CollaboratorDock({
           >
             <Users size={11} className="text-muted-foreground shrink-0" />
             <div className="flex items-center -space-x-1.5">
-              {displayUsers.slice(0, 3).map((u, i) => (
-                <div
-                  key={u.client_id || u.user_id || i}
-                  className="w-4 h-4 rounded-full border border-background flex items-center justify-center text-[7px] font-bold text-white shrink-0"
-                  style={{ backgroundColor: u.color || '#6366f1' }}
-                >
-                  {(u.name || u.full_name || 'U').charAt(0).toUpperCase()}
-                </div>
-              ))}
+              {displayUsers.slice(0, 3).map((u, i) => {
+                const isMe = currentUser && (u.user_id === currentUser.id || u.email === currentUser.email);
+                const avatar = u.avatar_url || (isMe && currentUser?.avatar_url);
+                return (
+                  <div
+                    key={u.client_id || u.user_id || i}
+                    className="w-4 h-4 rounded-full border border-background flex items-center justify-center text-[7px] font-bold text-white shrink-0 overflow-hidden"
+                    style={{ backgroundColor: u.color || '#6366f1' }}
+                  >
+                    {avatar ? (
+                      <img src={avatar} alt={u.name || 'User'} className="w-full h-full object-cover" />
+                    ) : (
+                      (u.name || u.full_name || 'U').charAt(0).toUpperCase()
+                    )}
+                  </div>
+                );
+              })}
             </div>
             <span>{displayUsers.length} online</span>
             {isOpen ? <ChevronDown size={11} /> : <ChevronUp size={11} />}
@@ -183,15 +201,23 @@ export default function CollaboratorDock({
           >
             <Users size={13} className="text-muted-foreground shrink-0" />
             <div className="flex items-center -space-x-1.5">
-              {displayUsers.slice(0, 4).map((u, i) => (
-                <div
-                  key={u.client_id || u.user_id || i}
-                  className="w-5 h-5 rounded-full border-2 border-card flex items-center justify-center text-[9px] font-bold text-white shadow-xs shrink-0"
-                  style={{ backgroundColor: u.color || '#6366f1' }}
-                >
-                  {(u.name || u.full_name || 'U').charAt(0).toUpperCase()}
-                </div>
-              ))}
+              {displayUsers.slice(0, 4).map((u, i) => {
+                const isMe = currentUser && (u.user_id === currentUser.id || u.email === currentUser.email);
+                const avatar = u.avatar_url || (isMe && currentUser?.avatar_url);
+                return (
+                  <div
+                    key={u.client_id || u.user_id || i}
+                    className="w-5 h-5 rounded-full border-2 border-card flex items-center justify-center text-[9px] font-bold text-white shadow-xs shrink-0 overflow-hidden"
+                    style={{ backgroundColor: u.color || '#6366f1' }}
+                  >
+                    {avatar ? (
+                      <img src={avatar} alt={u.name || 'User'} className="w-full h-full object-cover" />
+                    ) : (
+                      (u.name || u.full_name || 'U').charAt(0).toUpperCase()
+                    )}
+                  </div>
+                );
+              })}
               {displayUsers.length > 4 && (
                 <div className="w-5 h-5 rounded-full border-2 border-card bg-muted text-muted-foreground flex items-center justify-center text-[8px] font-bold">
                   +{displayUsers.length - 4}

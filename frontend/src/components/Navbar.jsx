@@ -106,7 +106,9 @@ export default function Navbar() {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  onClick={() => setShowProfileModal(true)}
+                  onSelect={() => {
+                    setTimeout(() => setShowProfileModal(true), 50);
+                  }}
                   className="cursor-pointer gap-2"
                 >
                   <User size={14} className="text-muted-foreground" />
@@ -114,7 +116,9 @@ export default function Navbar() {
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  onClick={() => setShowLogoutConfirm(true)}
+                  onSelect={() => {
+                    setTimeout(() => setShowLogoutConfirm(true), 50);
+                  }}
                   className="cursor-pointer gap-2 text-destructive focus:text-destructive focus:bg-destructive/10"
                 >
                   <LogOut size={14} />

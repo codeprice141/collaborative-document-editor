@@ -78,6 +78,7 @@ async def handle_websocket_connection(
             user_id=user.id,
             name=user.full_name,
             email=user.email,
+            avatar_url=user.avatar_url,
         )
 
         # 5. Send initial synchronization payload (sync_init) including persistent drawing_data
@@ -305,6 +306,7 @@ async def handle_websocket_connection(
                         "comment": msg.get("comment"),
                         "sender_name": user.full_name,
                         "sender_id": user.id,
+                        "sender_avatar": user.avatar_url,
                         "mentioned_user_ids": mentioned_user_ids,
                         "mentioned_emails": msg.get("mentioned_emails", []),
                         "mentioned_names": msg.get("mentioned_names", []),
@@ -324,6 +326,7 @@ async def handle_websocket_connection(
                                     "document_id": document_id,
                                     "document_title": doc.title if doc else "Document",
                                     "sender_name": user.full_name or user.email,
+                                    "sender_avatar": user.avatar_url,
                                     "comment": msg.get("comment"),
                                     "message": f"{user.full_name or 'A collaborator'} mentioned you in '{doc.title if doc else 'a document'}'",
                                 },

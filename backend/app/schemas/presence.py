@@ -22,6 +22,7 @@ class UserPresence(BaseModel):
     name: str
     email: str
     color: str
+    avatar_url: Optional[str] = None
     cursor: Optional[CursorPosition] = None
     selection: Optional[SelectionRange] = None
     is_typing: bool = False

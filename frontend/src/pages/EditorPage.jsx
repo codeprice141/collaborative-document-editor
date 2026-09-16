@@ -196,6 +196,7 @@ export default function EditorPage() {
         user_id: ownerId,
         full_name: docMeta.owner.full_name || docMeta.owner.email || 'Owner',
         email: docMeta.owner.email || '',
+        avatar_url: docMeta.owner.avatar_url || null,
         role: 'owner',
         is_online: (activeUsers || []).some((u) => u.user_id === ownerId),
       });
@@ -211,6 +212,7 @@ export default function EditorPage() {
           full_name:
             c.user?.full_name || c.full_name || c.user?.email || c.email || 'Collaborator',
           email: c.user?.email || c.email || '',
+          avatar_url: c.user?.avatar_url || c.avatar_url || null,
           role: (c.role || 'editor').toLowerCase(),
           is_online: (activeUsers || []).some((u) => u.user_id === uid),
         });
@@ -223,11 +225,13 @@ export default function EditorPage() {
       const existing = map.get(u.user_id);
       if (existing) {
         existing.is_online = true;
+        if (u.avatar_url) existing.avatar_url = u.avatar_url;
       } else {
         map.set(u.user_id, {
           user_id: u.user_id,
           full_name: u.name || u.email || 'User',
           email: u.email || '',
+          avatar_url: u.avatar_url || null,
           role: 'viewer',
           is_online: true,
         });
@@ -318,11 +322,15 @@ export default function EditorPage() {
               {activeUsers.slice(0, 4).map((u, i) => (
                 <div
                   key={u.client_id || i}
-                  className="w-7 h-7 rounded-full border-2 border-background flex items-center justify-center text-[10px] font-bold text-white shadow-sm"
+                  className="w-7 h-7 rounded-full border-2 border-background flex items-center justify-center text-[10px] font-bold text-white shadow-sm overflow-hidden"
                   style={{ backgroundColor: u.color || '#6366f1' }}
                   title={u.name || 'Collaborator'}
                 >
-                  {(u.name || 'U').charAt(0).toUpperCase()}
+                  {u.avatar_url ? (
+                    <img src={u.avatar_url} alt={u.name || 'Collaborator'} className="w-full h-full object-cover" />
+                  ) : (
+                    (u.name || 'U').charAt(0).toUpperCase()
+                  )}
                 </div>
               ))}
               {activeUsers.length > 4 && (

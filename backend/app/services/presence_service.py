@@ -31,6 +31,7 @@ class PresenceService:
         user_id: int,
         name: str,
         email: str,
+        avatar_url: Optional[str] = None,
     ) -> UserPresence:
         with self._lock:
             color = self.get_user_color(user_id)
@@ -40,6 +41,7 @@ class PresenceService:
                 name=name,
                 email=email,
                 color=color,
+                avatar_url=avatar_url,
                 last_seen=time.time(),
             )
             self._rooms[doc_id][client_id] = presence
