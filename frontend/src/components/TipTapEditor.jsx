@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { Collaboration } from '@tiptap/extension-collaboration';
@@ -104,8 +104,22 @@ export default function TipTapEditor({
     }
   }, [editor, isReadOnly]);
 
-  const wordCount = editor?.storage.characterCount?.words() ?? 0;
-  const charCount = editor?.storage.characterCount?.characters() ?? 0;
+  const [stats, setStats] = useState({ words: 0, characters: 0 });
+
+  useEffect(() => {
+    if (!editor) return;
+    const updateStats = () => {
+      setStats({
+        words: editor.storage.characterCount?.words() ?? 0,
+        characters: editor.storage.characterCount?.characters() ?? 0,
+      });
+    };
+    updateStats();
+    editor.on('transaction', updateStats);
+    return () => {
+      editor.off('transaction', updateStats);
+    };
+  }, [editor]);
 
   return (
     <div className="flex flex-col w-full h-full">
@@ -115,9 +129,9 @@ export default function TipTapEditor({
       )}
 
       {/* Document Sheet Container */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-[860px] mx-auto px-4 sm:px-8 py-10 pb-48">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 sm:p-12 shadow-card border border-slate-200/80 dark:border-slate-800 transition-colors">
+      <div className="flex-1 overflow-y-auto bg-muted/30">
+        <div className="max-w-[840px] mx-auto px-4 sm:px-6 py-8 sm:py-12 pb-48">
+          <div className="bg-card text-card-foreground rounded-xl p-8 sm:p-14 shadow-sm border border-border transition-colors">
             <EditorContent editor={editor} />
           </div>
         </div>
@@ -125,10 +139,16 @@ export default function TipTapEditor({
 
       {/* Word & Character Count Bar */}
       {editor && (
-        <div className="flex justify-end px-8 py-2 text-xs font-medium text-slate-400 dark:text-slate-500 border-t border-slate-100 dark:border-slate-800 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm">
-          <span>{wordCount} words</span>
-          <span className="mx-2">·</span>
-          <span>{charCount} characters</span>
+        <div className="flex justify-between items-center px-6 py-2 text-[11px] font-medium text-muted-foreground border-t border-border bg-background/80 backdrop-blur-sm">
+          <div className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            <span>Ready</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span>{stats.words} words</span>
+            <span className="text-muted-foreground/40">·</span>
+            <span>{stats.characters} characters</span>
+          </div>
         </div>
       )}
     </div>
