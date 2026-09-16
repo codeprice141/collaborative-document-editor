@@ -25,7 +25,6 @@ export default function TipTapEditor({
   typingUsers = [],
   currentUser,
   currentUserRole = 'editor',
-  connectionStatus = 'connected',
   isReadOnly = false,
   onOpenCommentDraft,
   onContentChange,
@@ -175,7 +174,6 @@ export default function TipTapEditor({
                 typingUsers={typingUsers}
                 currentUser={currentUser}
                 currentUserRole={currentUserRole}
-                connectionStatus={connectionStatus}
                 inline
               />
             </div>

@@ -6,7 +6,6 @@ export default function CollaboratorDock({
   typingUsers = [],
   currentUser = null,
   currentUserRole = 'editor',
-  connectionStatus = 'connected',
   inline = false,
 }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -63,25 +62,15 @@ export default function CollaboratorDock({
               inline ? 'absolute bottom-full left-0 mb-2.5' : 'mb-1'
             }`}
           >
-            {/* Top Section: Connection/Sync Status & User Role */}
-            <div className="flex items-center justify-between gap-2 pb-2.5 mb-2.5 border-b border-border">
-              {/* Sync status */}
-              <div className="flex items-center gap-1.5 min-w-0">
-                {connectionStatus === 'connected' ? (
-                  <>
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                    <span className="text-xs font-semibold text-foreground truncate">
-                      Saved & Synced
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
-                    <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 truncate">
-                      Syncing...
-                    </span>
-                  </>
-                )}
+            {/* Popover Header: Collaborators count & Current User Role */}
+            <div className="flex items-center justify-between pb-2 mb-2 border-b border-border">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-semibold text-foreground">
+                  Collaborators
+                </span>
+                <span className="text-[10px] font-semibold text-muted-foreground bg-secondary px-1.5 py-0.5 rounded-full">
+                  {displayUsers.length}
+                </span>
               </div>
 
               {/* User Role Pill */}
@@ -98,14 +87,6 @@ export default function CollaboratorDock({
                   Editor
                 </span>
               )}
-            </div>
-
-            {/* Collaborators Subheader */}
-            <div className="flex items-center justify-between pb-1.5 mb-1 text-[11px] font-medium text-muted-foreground">
-              <span>Active in Document</span>
-              <span className="bg-secondary text-foreground text-[10px] px-1.5 py-0.5 rounded-full font-semibold">
-                {displayUsers.length}
-              </span>
             </div>
 
             {/* Collaborator User List */}
@@ -189,12 +170,6 @@ export default function CollaboratorDock({
               ))}
             </div>
             <span>{displayUsers.length} online</span>
-            <span
-              className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                connectionStatus === 'connected' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'
-              }`}
-              title={connectionStatus === 'connected' ? 'Saved & Synced' : 'Syncing...'}
-            />
             {isOpen ? <ChevronDown size={11} /> : <ChevronUp size={11} />}
           </button>
         ) : (
@@ -204,7 +179,7 @@ export default function CollaboratorDock({
             className={`flex items-center gap-2 bg-card text-card-foreground border border-border rounded-full px-3 py-1.5 shadow-md hover:shadow-lg hover:border-border/80 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20 active:scale-95 ${
               isOpen ? 'ring-2 ring-primary/30 border-primary/50' : ''
             }`}
-            title="Click to view document status & collaborators"
+            title="Click to view online collaborators"
           >
             <Users size={13} className="text-muted-foreground shrink-0" />
             <div className="flex items-center -space-x-1.5">
@@ -226,12 +201,6 @@ export default function CollaboratorDock({
             <span className="text-xs font-semibold text-foreground">
               {displayUsers.length} online
             </span>
-            <span
-              className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                connectionStatus === 'connected' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'
-              }`}
-              title={connectionStatus === 'connected' ? 'Saved & Synced' : 'Syncing...'}
-            />
             {isOpen ? (
               <ChevronDown size={13} className="text-muted-foreground" />
             ) : (

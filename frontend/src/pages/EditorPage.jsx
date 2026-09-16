@@ -402,7 +402,6 @@ export default function EditorPage() {
                 typingUsers={typingUsers}
                 currentUser={currentUser}
                 currentUserRole={effectiveRole}
-                connectionStatus={connectionStatus}
                 isReadOnly={isReadOnly}
                 onOpenCommentDraft={(text) => {
                   setCommentDraft({ selectedText: text });
@@ -453,7 +452,6 @@ export default function EditorPage() {
             typingUsers={typingUsers}
             currentUser={currentUser}
             currentUserRole={effectiveRole}
-            connectionStatus={connectionStatus}
           />
         </div>
       </main>
