@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import create_access_token, hash_password
-from app.schemas.auth import UserRegister, UserLogin, UserResponse, Token
+from app.schemas.auth import UserRegister, UserLogin, UserResponse, UserUpdate, Token
 from app.services.auth_service import AuthService
 from app.api.deps import get_current_user
 from app.models.user import User
@@ -199,6 +199,31 @@ def login(login_in: UserLogin, db: Session = Depends(get_db)):
 @router.get("/me", response_model=UserResponse)
 def get_current_user_profile(current_user: User = Depends(get_current_user)):
     """Returns profile information for the authenticated user."""
+    return current_user
+
+
+@router.patch("/me", response_model=UserResponse)
+def update_current_user_profile(
+    user_update: UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Updates profile information (name, avatar) for the authenticated user."""
+    if user_update.full_name is not None:
+        name = user_update.full_name.strip()
+        if not name:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Full name cannot be empty.",
+            )
+        current_user.full_name = name
+
+    if user_update.avatar_url is not None:
+        avatar = user_update.avatar_url.strip()
+        current_user.avatar_url = avatar if avatar else None
+
+    db.commit()
+    db.refresh(current_user)
     return current_user
 
 

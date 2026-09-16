@@ -30,6 +30,17 @@ async def lifespan(app: FastAPI):
     logger.info("Initializing database tables for %s...", settings.PROJECT_NAME)
     try:
         Base.metadata.create_all(bind=engine)
+        # Safe migration for avatar_url column
+        with engine.connect() as conn:
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;"))
+                conn.commit()
+            except Exception:
+                try:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN avatar_url TEXT;"))
+                    conn.commit()
+                except Exception:
+                    pass
     except Exception as exc:
         logger.warning("Database init check on startup: %s", exc)
 

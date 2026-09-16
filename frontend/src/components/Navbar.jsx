@@ -3,10 +3,11 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import ConfirmModal from './ConfirmModal';
+import ProfileModal from './ProfileModal';
 import { Layers, LogOut, Sun, Moon, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -20,6 +21,7 @@ export default function Navbar() {
   const { user, logout } = useAuth();
   const { toggleTheme, isDark } = useTheme();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -29,6 +31,7 @@ export default function Navbar() {
 
   const userInitials = (user?.full_name || user?.email || 'U')
     .split(' ')
+    .filter(Boolean)
     .map(w => w[0])
     .join('')
     .slice(0, 2)
@@ -71,7 +74,10 @@ export default function Navbar() {
                   variant="ghost"
                   className="h-8 px-2 gap-2 rounded-lg text-xs font-medium hover:bg-muted"
                 >
-                  <Avatar className="h-6 w-6 border border-border">
+                  <Avatar className="h-6 w-6 border border-border shrink-0">
+                    {user.avatar_url && (
+                      <AvatarImage src={user.avatar_url} alt={user.full_name || 'User'} />
+                    )}
                     <AvatarFallback className="bg-secondary text-foreground text-[10px] font-semibold">
                       {userInitials}
                     </AvatarFallback>
@@ -83,15 +89,28 @@ export default function Navbar() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel className="font-normal">
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-semibold leading-none">{user.full_name || 'User'}</p>
-                    <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+                  <div className="flex items-center gap-2.5 py-1">
+                    <Avatar className="h-9 w-9 border border-border shrink-0">
+                      {user.avatar_url && (
+                        <AvatarImage src={user.avatar_url} alt={user.full_name || 'User'} />
+                      )}
+                      <AvatarFallback className="bg-secondary text-foreground text-xs font-semibold">
+                        {userInitials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex flex-col space-y-0.5 min-w-0">
+                      <p className="text-sm font-semibold leading-none truncate text-foreground">{user.full_name || 'User'}</p>
+                      <p className="text-xs leading-none text-muted-foreground truncate">{user.email}</p>
+                    </div>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={toggleTheme} className="cursor-pointer gap-2">
-                  {isDark ? <Sun size={14} className="text-amber-400" /> : <Moon size={14} />}
-                  <span>{isDark ? 'Light Theme' : 'Dark Theme'}</span>
+                <DropdownMenuItem
+                  onClick={() => setShowProfileModal(true)}
+                  className="cursor-pointer gap-2"
+                >
+                  <User size={14} className="text-muted-foreground" />
+                  <span>Edit Profile</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
@@ -106,6 +125,11 @@ export default function Navbar() {
           )}
         </div>
       </header>
+
+      <ProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+      />
 
       <ConfirmModal
         isOpen={showLogoutConfirm}

@@ -21,10 +21,17 @@ class UserResponse(BaseModel):
     id: int
     email: str
     full_name: str
+    avatar_url: Optional[str] = None
     is_active: bool
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class UserUpdate(BaseModel):
+    """Schema for updating user profile."""
+    full_name: Optional[str] = Field(None, min_length=1, max_length=100)
+    avatar_url: Optional[str] = None
 
 
 class Token(BaseModel):

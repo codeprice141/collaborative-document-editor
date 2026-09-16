@@ -90,6 +90,15 @@ export const api = {
     }
   },
 
+  async updateProfile(data) {
+    const res = await fetch(`${API_BASE}/auth/me`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+    return handleResponse(res, 'Failed to update profile');
+  },
+
   async searchUsers(query = '') {
     const res = await fetch(`${API_BASE}/auth/users?q=${encodeURIComponent(query)}`, { headers: getAuthHeaders() });
     return handleResponse(res, 'Failed to search users');
