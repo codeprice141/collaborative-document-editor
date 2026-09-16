@@ -339,6 +339,7 @@ export default function EditorPage() {
                 yjsDoc={yjsDoc}
                 initialContent={initialContent || docMeta?.content || ''}
                 activeUsers={activeUsers}
+                typingUsers={typingUsers}
                 currentUser={currentUser}
                 isReadOnly={isReadOnly}
                 onOpenCommentDraft={(text) => {
@@ -383,11 +384,13 @@ export default function EditorPage() {
           </div>
         )}
 
-        {/* Floating Collaborator Dock */}
-        <CollaboratorDock
-          activeUsers={activeUsers}
-          typingUsers={typingUsers}
-        />
+        {/* Floating Collaborator Dock: On desktop always; on mobile only when canvas tab is active */}
+        <div className={activeTab === 'doc' ? 'hidden sm:block' : 'block'}>
+          <CollaboratorDock
+            activeUsers={activeUsers}
+            typingUsers={typingUsers}
+          />
+        </div>
       </main>
 
       {/* Drawers and Modals */}
