@@ -81,12 +81,16 @@ async def handle_websocket_connection(
         )
 
         # 5. Send initial synchronization payload (sync_init) including persistent drawing_data
+        dirty_content, dirty_drawing = write_buffer.get_latest(doc.id)
+        current_content = dirty_content if dirty_content is not None else doc.content
+        current_drawing = dirty_drawing if dirty_drawing is not None else (doc.drawing_data or "[]")
+
         init_payload = {
             "type": "sync_init",
             "document_id": doc.id,
             "title": doc.title,
-            "content": doc.content,
-            "drawing_data": doc.drawing_data or "[]",
+            "content": current_content,
+            "drawing_data": current_drawing,
             "version": doc.version,
             "user_role": role_str,
             "user_color": user_presence.color,
@@ -330,6 +334,7 @@ async def handle_websocket_connection(
         manager.disconnect(websocket)
         metrics.ws_disconnected()
         presence_service.user_left(document_id, client_id)
+        write_buffer.flush_document(document_id)
         if user:
             try:
                 await manager.broadcast_to_room(

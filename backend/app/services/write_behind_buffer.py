@@ -55,6 +55,40 @@ class WriteBehindBuffer:
         finally:
             db.close()
 
+    def flush_document(self, doc_id: int):
+        """Immediately flushes a specific document to DB if dirty (e.g. on client disconnect)."""
+        with self._lock:
+            entry = self._dirty_documents.pop(doc_id, None)
+        if not entry:
+            return
+        content, version, updated_at, drawing_data = entry
+        db: Session = SessionLocal()
+        try:
+            doc = db.query(Document).filter(Document.id == doc_id).first()
+            if doc:
+                if content is not None:
+                    doc.content = content
+                if version > 0:
+                    doc.version = version
+                if drawing_data is not None:
+                    doc.drawing_data = drawing_data
+                doc.updated_at = updated_at
+                db.commit()
+                logger.info("WriteBehindBuffer: Immediately flushed doc %s to database.", doc_id)
+        except Exception as exc:
+            db.rollback()
+            logger.error("WriteBehindBuffer immediate flush failed for doc %s: %s", doc_id, exc)
+        finally:
+            db.close()
+
+    def get_latest(self, doc_id: int) -> Tuple[Optional[str], Optional[str]]:
+        """Returns (latest_content, latest_drawing) from buffer if dirty, else (None, None)."""
+        with self._lock:
+            entry = self._dirty_documents.get(doc_id)
+            if entry:
+                return entry[0], entry[3]
+            return None, None
+
     async def start_background_flusher(self):
         """Continuous background loop to flush dirty documents every interval."""
         self._is_running = True

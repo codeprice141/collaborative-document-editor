@@ -3,7 +3,18 @@ import * as Y from "yjs";
 
 function resolveWebSocketUrl(docId, token, clientId) {
   if (import.meta.env.VITE_WS_URL) {
-    return `${import.meta.env.VITE_WS_URL}/api/v1/ws/documents/${docId}?token=${token}&client_id=${clientId}`;
+    const base = import.meta.env.VITE_WS_URL.replace(/\/$/, "");
+    return `${base}/api/v1/ws/documents/${docId}?token=${token}&client_id=${clientId}`;
+  }
+  if (import.meta.env.VITE_API_BASE) {
+    try {
+      const apiUrl = new URL(import.meta.env.VITE_API_BASE);
+      const wsProto = apiUrl.protocol === "https:" ? "wss:" : "ws:";
+      const cleanPath = apiUrl.pathname.replace(/\/api\/v1\/?$/, "");
+      return `${wsProto}//${apiUrl.host}${cleanPath}/api/v1/ws/documents/${docId}?token=${token}&client_id=${clientId}`;
+    } catch (e) {
+      console.warn("Failed to derive WS URL from VITE_API_BASE:", e);
+    }
   }
   if (typeof window !== "undefined") {
     const isDevPort = ["5173", "5174", "5175", "5176", "3000"].includes(window.location.port);

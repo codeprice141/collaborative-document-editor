@@ -144,6 +144,23 @@ export default function EditorPage() {
     }
   }, [docId, isReadOnly, setDrawingData]);
 
+  const restSaveTimer = useRef(null);
+  const handleContentChange = useCallback((html) => {
+    // 1. Live broadcast to peers over WebSocket
+    syncHtmlContent(html);
+    // 2. Persist to PostgreSQL database via REST fallback with 1s debounce
+    clearTimeout(restSaveTimer.current);
+    restSaveTimer.current = setTimeout(async () => {
+      if (!isReadOnly) {
+        try {
+          await api.updateDocument(docId, { content: html });
+        } catch (err) {
+          console.debug('Auto-save REST fallback:', err);
+        }
+      }
+    }, 1000);
+  }, [syncHtmlContent, isReadOnly, docId]);
+
   const collaborators = docMeta?.collaborators || [];
 
   // Sync status indicator
@@ -320,7 +337,7 @@ export default function EditorPage() {
             {isReady ? (
               <TipTapEditor
                 yjsDoc={yjsDoc}
-                initialContent={initialContent}
+                initialContent={initialContent || docMeta?.content || ''}
                 activeUsers={activeUsers}
                 currentUser={currentUser}
                 isReadOnly={isReadOnly}
@@ -328,7 +345,7 @@ export default function EditorPage() {
                   setCommentDraft({ selectedText: text });
                   setShowComments(true);
                 }}
-                onContentChange={syncHtmlContent}
+                onContentChange={handleContentChange}
               />
             ) : (
               <div className="flex-1 flex items-center justify-center">

@@ -82,22 +82,43 @@ export default function TipTapEditor({
         if (onContentChange) {
           onContentChange(editor.getHTML());
         }
-      }, 1000);
+      }, 400);
     },
   });
 
   // Seed initial content into Yjs document only if newly created and user is solo.
   // If other peers are already present, content is synced via Yjs to prevent duplication.
   useEffect(() => {
-    if (editor && initialContent && !initializedRef.current) {
+    if (editor && !initializedRef.current) {
       const fragment = yjsDoc.getXmlFragment('default');
       const isSolo = !activeUsers || activeUsers.length <= 1;
-      if (fragment.length === 0 && isSolo) {
-        editor.commands.setContent(initialContent, false);
+      if (fragment.length === 0) {
+        if (initialContent && isSolo) {
+          editor.commands.setContent(initialContent, false);
+          initializedRef.current = true;
+        }
+      } else {
+        initializedRef.current = true;
       }
-      initializedRef.current = true;
     }
   }, [editor, initialContent, yjsDoc, activeUsers]);
+
+  // Flush pending edits immediately on unmount or before page reload
+  useEffect(() => {
+    const flushSave = () => {
+      if (onContentChange && editor && !editor.isDestroyed) {
+        onContentChange(editor.getHTML());
+      }
+    };
+    window.addEventListener('beforeunload', flushSave);
+    return () => {
+      window.removeEventListener('beforeunload', flushSave);
+      if (saveDebounceRef.current) {
+        clearTimeout(saveDebounceRef.current);
+      }
+      flushSave();
+    };
+  }, [editor, onContentChange]);
 
   // Sync read-only status
   useEffect(() => {
