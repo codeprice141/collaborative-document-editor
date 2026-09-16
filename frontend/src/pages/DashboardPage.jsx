@@ -4,6 +4,7 @@ import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import ConfirmModal from '../components/ConfirmModal';
+import CreateDocumentModal from '../components/CreateDocumentModal';
 import Toast from '../components/Toast';
 import { useUserNotifications } from '../hooks/useUserNotifications';
 import { formatRelativeTime } from '../utils/date';
@@ -128,7 +129,7 @@ export default function DashboardPage() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('All');
-  const [creating, setCreating] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null); // { id, title }
   const [deleting, setDeleting] = useState(false);
   const [toast, setToast] = useState({ message: '', type: 'success' });
@@ -171,15 +172,23 @@ export default function DashboardPage() {
     fetchDocs();
   }, []);
 
-  const handleCreate = async () => {
-    setCreating(true);
+  const handleCreateDocument = async ({ title, format, content }) => {
     try {
-      const doc = await api.createDocument({ title: 'Untitled Document', content: '' });
-      navigate(`/editor/${doc.id}`);
+      const defaultTitle = format === 'canvas' ? 'Untitled Whiteboard' : 'Untitled Document';
+      const doc = await api.createDocument({
+        title: title || defaultTitle,
+        content: content || '',
+      });
+      setShowCreateModal(false);
+      if (format === 'canvas') {
+        navigate(`/editor/${doc.id}?tab=canvas`);
+      } else {
+        navigate(`/editor/${doc.id}`);
+      }
     } catch (e) {
       setError('Failed to create document');
-    } finally {
-      setCreating(false);
+      showToast('Failed to create document', 'error');
+      throw e;
     }
   };
 
@@ -241,13 +250,12 @@ export default function DashboardPage() {
             </div>
 
             <Button
-              onClick={handleCreate}
-              disabled={creating}
+              onClick={() => setShowCreateModal(true)}
               size="sm"
-              className="gap-1.5 h-9 px-3.5 rounded-lg text-xs font-medium shadow-xs shrink-0"
+              className="gap-1.5 h-9 px-3.5 rounded-lg text-xs font-medium shadow-xs shrink-0 cursor-pointer"
             >
               <Plus size={15} />
-              <span>{creating ? 'Creating...' : 'New Document'}</span>
+              <span>New Document</span>
             </Button>
           </div>
         </div>
@@ -338,6 +346,13 @@ export default function DashboardPage() {
         loading={deleting}
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
+      />
+
+      {/* Create New Document Modal */}
+      <CreateDocumentModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onCreate={handleCreateDocument}
       />
 
       <Toast

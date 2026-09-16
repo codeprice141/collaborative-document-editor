@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -25,6 +25,7 @@ const ExcalidrawBoard = lazy(() => import('../components/ExcalidrawBoard'));
 
 export default function EditorPage() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
   const docId = parseInt(id, 10);
   const { user: currentUser } = useAuth();
   const { isDark, toggleTheme } = useTheme();
@@ -36,7 +37,8 @@ export default function EditorPage() {
   const [titleState, setTitleState] = useState('idle');
 
   // UI state
-  const [activeTab, setActiveTab] = useState('doc');
+  const defaultTab = searchParams.get('tab') === 'canvas' ? 'canvas' : 'doc';
+  const [activeTab, setActiveTab] = useState(defaultTab);
   const [showShare, setShowShare] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [unreadCommentsCount, setUnreadCommentsCount] = useState(0);
