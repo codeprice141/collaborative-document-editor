@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { Collaboration } from '@tiptap/extension-collaboration';
@@ -20,6 +20,7 @@ import EditorToolbar from './EditorToolbar';
 export default function TipTapEditor({
   yjsDoc,
   initialContent = '',
+  activeUsers = [],
   currentUser,
   isReadOnly = false,
   onOpenCommentDraft,
@@ -85,17 +86,18 @@ export default function TipTapEditor({
     },
   });
 
-  // Seed initial content into Yjs document if it's newly created
+  // Seed initial content into Yjs document only if newly created and user is solo.
+  // If other peers are already present, content is synced via Yjs to prevent duplication.
   useEffect(() => {
     if (editor && initialContent && !initializedRef.current) {
       const fragment = yjsDoc.getXmlFragment('default');
-      // If the Yjs fragment is currently empty, load the initial HTML
-      if (fragment.length === 0) {
+      const isSolo = !activeUsers || activeUsers.length <= 1;
+      if (fragment.length === 0 && isSolo) {
         editor.commands.setContent(initialContent, false);
       }
       initializedRef.current = true;
     }
-  }, [editor, initialContent, yjsDoc]);
+  }, [editor, initialContent, yjsDoc, activeUsers]);
 
   // Sync read-only status
   useEffect(() => {
@@ -104,8 +106,22 @@ export default function TipTapEditor({
     }
   }, [editor, isReadOnly]);
 
-  const wordCount = editor?.storage.characterCount?.words() ?? 0;
-  const charCount = editor?.storage.characterCount?.characters() ?? 0;
+  const [stats, setStats] = useState({ words: 0, characters: 0 });
+
+  useEffect(() => {
+    if (!editor) return;
+    const updateStats = () => {
+      setStats({
+        words: editor.storage.characterCount?.words() ?? 0,
+        characters: editor.storage.characterCount?.characters() ?? 0,
+      });
+    };
+    updateStats();
+    editor.on('transaction', updateStats);
+    return () => {
+      editor.off('transaction', updateStats);
+    };
+  }, [editor]);
 
   return (
     <div className="flex flex-col w-full h-full">

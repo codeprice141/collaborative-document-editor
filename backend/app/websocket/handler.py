@@ -208,6 +208,31 @@ async def handle_websocket_connection(
                         exclude_client_id=client_id,
                     )
 
+            elif msg_type == "yjs_sync":
+                target_client = msg.get("target_client_id")
+                update_b64 = msg.get("update")
+                if target_client and update_b64:
+                    await manager.send_to_client(
+                        document_id,
+                        target_client,
+                        {
+                            "type": "yjs_broadcast",
+                            "update": update_b64,
+                            "client_id": client_id,
+                            "user_id": user.id,
+                        },
+                    )
+
+            elif msg_type == "yjs_request_sync":
+                await manager.broadcast_to_room(
+                    document_id,
+                    {
+                        "type": "yjs_request_sync",
+                        "requesting_client_id": client_id,
+                    },
+                    exclude_client_id=client_id,
+                )
+
             # --- Whiteboard Live Drawing & Vector Shapes (with persistence!) ---
             elif msg_type == "draw":
                 if role_enum == CollaboratorRole.VIEWER:

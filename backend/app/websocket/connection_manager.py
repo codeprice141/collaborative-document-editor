@@ -58,6 +58,16 @@ class ConnectionManager:
         except Exception as exc:
             logger.warning("Failed to send personal message: %s", exc)
 
+    async def send_to_client(self, doc_id: int, client_id: str, message: dict):
+        """Sends targeted JSON message to specific client in room."""
+        if doc_id in self._rooms and client_id in self._rooms[doc_id]:
+            ws = self._rooms[doc_id][client_id]
+            try:
+                await ws.send_json(message)
+            except Exception as exc:
+                logger.warning("Failed to send message to client %s: %s", client_id, exc)
+                self.disconnect(ws)
+
     async def broadcast_to_room(
         self,
         doc_id: int,

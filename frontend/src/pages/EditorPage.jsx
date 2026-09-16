@@ -321,6 +321,7 @@ export default function EditorPage() {
               <TipTapEditor
                 yjsDoc={yjsDoc}
                 initialContent={initialContent}
+                activeUsers={activeUsers}
                 currentUser={currentUser}
                 isReadOnly={isReadOnly}
                 onOpenCommentDraft={(text) => {
