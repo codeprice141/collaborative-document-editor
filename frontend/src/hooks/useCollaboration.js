@@ -132,9 +132,17 @@ export function useCollaboration(docId, onRemoteDraw, onRemoteComment) {
                 setVersion(data.version || 0);
                 setUserRole(data.user_role || "editor");
                 setMyColor(data.user_color || "#6366f1");
-                setActiveUsers(deduplicateUsers(data.active_users || []));
+                const initialActiveUsers = deduplicateUsers(data.active_users || []);
+                setActiveUsers(initialActiveUsers);
                 setConnectionStatus("connected");
                 setIsReady(true);
+                if (initialActiveUsers.length > 1 && wsRef.current?.readyState === WebSocket.OPEN) {
+                  wsRef.current.send(
+                    JSON.stringify({
+                      type: "yjs_request_sync",
+                    })
+                  );
+                }
                 break;
 
               case "yjs_broadcast":
@@ -148,11 +156,48 @@ export function useCollaboration(docId, onRemoteDraw, onRemoteComment) {
                 }
                 break;
 
+              case "yjs_request_sync":
+                if (data.requesting_client_id && yjsDocRef.current && wsRef.current?.readyState === WebSocket.OPEN) {
+                  try {
+                    const stateUpdate = Y.encodeStateAsUpdate(yjsDocRef.current);
+                    if (stateUpdate && stateUpdate.length > 2) {
+                      const b64 = uint8ToBase64(stateUpdate);
+                      wsRef.current.send(
+                        JSON.stringify({
+                          type: "yjs_sync",
+                          target_client_id: data.requesting_client_id,
+                          update: b64,
+                        })
+                      );
+                    }
+                  } catch (err) {
+                    console.warn("Failed to reply to yjs_request_sync:", err);
+                  }
+                }
+                break;
+
               case "presence_join":
                 if (data.active_users) {
                   setActiveUsers(deduplicateUsers(data.active_users));
                 } else if (data.user) {
                   setActiveUsers((prev) => deduplicateUsers([...prev, data.user]));
+                }
+                if (data.user?.client_id && yjsDocRef.current && wsRef.current?.readyState === WebSocket.OPEN) {
+                  try {
+                    const stateUpdate = Y.encodeStateAsUpdate(yjsDocRef.current);
+                    if (stateUpdate && stateUpdate.length > 2) {
+                      const b64 = uint8ToBase64(stateUpdate);
+                      wsRef.current.send(
+                        JSON.stringify({
+                          type: "yjs_sync",
+                          target_client_id: data.user.client_id,
+                          update: b64,
+                        })
+                      );
+                    }
+                  } catch (err) {
+                    console.warn("Failed to send sync snapshot to newcomer:", err);
+                  }
                 }
                 break;
 

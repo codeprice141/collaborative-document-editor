@@ -20,6 +20,7 @@ import EditorToolbar from './EditorToolbar';
 export default function TipTapEditor({
   yjsDoc,
   initialContent = '',
+  activeUsers = [],
   currentUser,
   isReadOnly = false,
   onOpenCommentDraft,
@@ -85,17 +86,18 @@ export default function TipTapEditor({
     },
   });
 
-  // Seed initial content into Yjs document if it's newly created
+  // Seed initial content into Yjs document only if newly created and user is solo.
+  // If other peers are already present, content is synced via Yjs to prevent duplication.
   useEffect(() => {
     if (editor && initialContent && !initializedRef.current) {
       const fragment = yjsDoc.getXmlFragment('default');
-      // If the Yjs fragment is currently empty, load the initial HTML
-      if (fragment.length === 0) {
+      const isSolo = !activeUsers || activeUsers.length <= 1;
+      if (fragment.length === 0 && isSolo) {
         editor.commands.setContent(initialContent, false);
       }
       initializedRef.current = true;
     }
-  }, [editor, initialContent, yjsDoc]);
+  }, [editor, initialContent, yjsDoc, activeUsers]);
 
   // Sync read-only status
   useEffect(() => {
