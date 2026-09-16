@@ -55,7 +55,7 @@ export default function TipTapEditor({
           if (node.type.name === 'heading') return 'Heading...';
           // Only show placeholder on the very first line when the document is empty
           if (pos === 0 && editor.isEmpty) {
-            return 'Start writing your document... use the toolbar for styling';
+            return 'Start typing...';
           }
           return '';
         },
