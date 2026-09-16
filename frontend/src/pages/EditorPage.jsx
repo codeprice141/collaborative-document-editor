@@ -7,13 +7,12 @@ import { useCollaboration } from '../hooks/useCollaboration';
 import TipTapEditor from '../components/TipTapEditor';
 import CollaboratorDock from '../components/CollaboratorDock';
 import ShareModal from '../components/ShareModal';
-import RevisionHistoryDrawer from '../components/RevisionHistoryDrawer';
 import CommentsDrawer from '../components/CommentsDrawer';
 import ExportModal from '../components/ExportModal';
 import Toast from '../components/Toast';
 import { playNotificationChime } from '../utils/audio';
 import {
-  ArrowLeft, Share2, History, FileText, Palette,
+  ArrowLeft, Share2, FileText, Palette,
   MessageSquare, Download, Sun, Moon, WifiOff,
   CheckCircle, Loader2, Edit3,
 } from 'lucide-react';
@@ -39,7 +38,6 @@ export default function EditorPage() {
   // UI state
   const [activeTab, setActiveTab] = useState('doc');
   const [showShare, setShowShare] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [unreadCommentsCount, setUnreadCommentsCount] = useState(0);
   const [showExport, setShowExport] = useState(false);
@@ -392,17 +390,6 @@ export default function EditorPage() {
             <span className="hidden md:inline">Export</span>
           </Button>
 
-          {/* History Button */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowHistory(true)}
-            className="hidden sm:inline-flex h-8 px-2.5 gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
-            title="Version History"
-          >
-            <History size={14} />
-            <span className="hidden md:inline">History</span>
-          </Button>
 
           {/* Share Modal Trigger (Owner only) */}
           {docMeta?.user_role === 'owner' && (
@@ -495,17 +482,6 @@ export default function EditorPage() {
         />
       )}
 
-      {showHistory && (
-        <RevisionHistoryDrawer
-          docId={docId}
-          isOwner={docMeta?.user_role === 'owner'}
-          onClose={() => setShowHistory(false)}
-          onRollback={() => {
-            showToast('Document restored to historical version!');
-            setShowHistory(false);
-          }}
-        />
-      )}
 
       {showComments && (
         <CommentsDrawer

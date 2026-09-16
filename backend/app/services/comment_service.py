@@ -1,6 +1,6 @@
 from typing import List, Optional
 from datetime import datetime, timezone
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from app.models.comment import DocumentComment, DocumentCommentReply
 from app.schemas.comment import CommentCreate, CommentReplyCreate
 
@@ -20,13 +20,21 @@ class CommentService:
         )
         db.add(comment)
         db.commit()
-        db.refresh(comment)
-        return comment
+        return (
+            db.query(DocumentComment)
+            .options(joinedload(DocumentComment.user))
+            .filter(DocumentComment.id == comment.id)
+            .first()
+        )
 
     @staticmethod
     def list_comments(db: Session, doc_id: int) -> List[DocumentComment]:
         return (
             db.query(DocumentComment)
+            .options(
+                joinedload(DocumentComment.user),
+                joinedload(DocumentComment.replies).joinedload(DocumentCommentReply.user),
+            )
             .filter(DocumentComment.document_id == doc_id)
             .order_by(DocumentComment.created_at.asc())
             .all()
@@ -36,7 +44,15 @@ class CommentService:
     def resolve_comment(
         db: Session, comment_id: int, is_resolved: bool = True
     ) -> Optional[DocumentComment]:
-        comment = db.query(DocumentComment).filter(DocumentComment.id == comment_id).first()
+        comment = (
+            db.query(DocumentComment)
+            .options(
+                joinedload(DocumentComment.user),
+                joinedload(DocumentComment.replies).joinedload(DocumentCommentReply.user),
+            )
+            .filter(DocumentComment.id == comment_id)
+            .first()
+        )
         if not comment:
             return None
         comment.is_resolved = is_resolved
@@ -68,5 +84,9 @@ class CommentService:
         )
         db.add(reply)
         db.commit()
-        db.refresh(reply)
-        return reply
+        return (
+            db.query(DocumentCommentReply)
+            .options(joinedload(DocumentCommentReply.user))
+            .filter(DocumentCommentReply.id == reply.id)
+            .first()
+        )

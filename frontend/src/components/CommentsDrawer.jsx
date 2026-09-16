@@ -1,17 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
 import { X, Send, MessageSquare, AtSign, CornerDownRight, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
-
-function relativeTime(iso) {
-  if (!iso) return '';
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
-}
+import { formatRelativeTime } from '../utils/date';
 
 function Avatar({ name = '', size = 'sm' }) {
   const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
@@ -176,17 +166,24 @@ function CommentCard({ comment, currentUserId, docId, onDeleted, allCollaborator
     } catch { /* silent */ }
   };
 
+  const authorName =
+    comment.user?.full_name ||
+    comment.user_name ||
+    comment.user?.email ||
+    comment.user_email ||
+    'Collaborator';
+
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
       {/* Header */}
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="flex items-center gap-2.5 min-w-0">
-          <Avatar name={comment.user_name || comment.user_email || 'U'} size="sm" />
+          <Avatar name={authorName} size="sm" />
           <div className="min-w-0">
             <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">
-              {comment.user_name || comment.user_email || 'User'}
+              {authorName}
             </p>
-            <p className="text-xs text-slate-400 dark:text-slate-500">{relativeTime(comment.created_at)}</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500">{formatRelativeTime(comment.created_at)}</p>
           </div>
         </div>
         {isOwner && (
@@ -215,21 +212,29 @@ function CommentCard({ comment, currentUserId, docId, onDeleted, allCollaborator
       {/* Replies */}
       {replies.length > 0 && (
         <div className="mt-3 border-t border-slate-100 dark:border-slate-800 pt-2.5 space-y-2.5">
-          {(expanded ? replies : replies.slice(0, 1)).map(r => (
-            <div key={r.id} className="flex items-start gap-2">
-              <CornerDownRight size={13} className="text-slate-300 dark:text-slate-600 mt-1 flex-shrink-0" />
-              <Avatar name={r.user_name || 'U'} size="sm" />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">{r.user_name || 'User'}</span>
-                  <span className="text-[10px] text-slate-400 dark:text-slate-500">{relativeTime(r.created_at)}</span>
+          {(expanded ? replies : replies.slice(0, 1)).map(r => {
+            const replyAuthor =
+              r.user?.full_name ||
+              r.user_name ||
+              r.user?.email ||
+              r.user_email ||
+              'Collaborator';
+            return (
+              <div key={r.id} className="flex items-start gap-2">
+                <CornerDownRight size={13} className="text-slate-300 dark:text-slate-600 mt-1 flex-shrink-0" />
+                <Avatar name={replyAuthor} size="sm" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">{replyAuthor}</span>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500">{formatRelativeTime(r.created_at)}</span>
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 whitespace-pre-wrap">
+                    {renderCommentText(r.content)}
+                  </p>
                 </div>
-                <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 whitespace-pre-wrap">
-                  {renderCommentText(r.content)}
-                </p>
               </div>
-            </div>
-          ))}
+            );
+          })}
           {replies.length > 1 && (
             <button onClick={() => setExpanded(e => !e)} className="flex items-center gap-1 text-xs font-semibold text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 ml-5">
               {expanded ? <><ChevronUp size={12} />Show less</> : <><ChevronDown size={12} />{replies.length - 1} more {replies.length - 1 === 1 ? 'reply' : 'replies'}</>}

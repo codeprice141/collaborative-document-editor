@@ -6,6 +6,7 @@ import Navbar from '../components/Navbar';
 import ConfirmModal from '../components/ConfirmModal';
 import Toast from '../components/Toast';
 import { useUserNotifications } from '../hooks/useUserNotifications';
+import { formatRelativeTime } from '../utils/date';
 import {
   Plus,
   Search,
@@ -31,20 +32,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 const FILTER_OPTIONS = ['All', 'Owned', 'Shared'];
-
-function relativeTime(iso) {
-  if (!iso) return '';
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  if (days < 30) return `${days}d ago`;
-  const months = Math.floor(days / 30);
-  return `${months}mo ago`;
-}
 
 function DocCard({ doc, onOpen, onDelete, currentUserId }) {
   const isOwner = doc.owner_id === currentUserId || doc.user_role === 'owner';
@@ -118,7 +105,7 @@ function DocCard({ doc, onOpen, onDelete, currentUserId }) {
         <div className="flex items-center justify-between text-[11px] text-muted-foreground border-t border-border/50 pt-2.5">
           <div className="flex items-center gap-1.5">
             <Clock size={12} strokeWidth={1.75} />
-            <span>Updated {relativeTime(doc.updated_at || doc.created_at)}</span>
+            <span>Updated {formatRelativeTime(doc.updated_at || doc.created_at)}</span>
           </div>
           {collabCount > 0 && (
             <div className="flex items-center gap-1">

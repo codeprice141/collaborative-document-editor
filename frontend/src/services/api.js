@@ -152,19 +152,6 @@ export const api = {
     return handleResponse(res, 'Failed to remove collaborator');
   },
 
-  // --- Revisions ---
-  async getRevisions(docId) {
-    const res = await fetch(`${API_BASE}/documents/${docId}/revisions`, { headers: getAuthHeaders() });
-    return handleResponse(res, 'Failed to fetch revisions');
-  },
-
-  async rollbackRevision(docId, revisionId) {
-    const res = await fetch(`${API_BASE}/documents/${docId}/rollback/${revisionId}`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-    });
-    return handleResponse(res, 'Failed to restore version');
-  },
 
   // --- Comments ---
   async getComments(docId) {
