@@ -247,24 +247,6 @@ export default function EditorPage() {
     });
   }, [docMeta, activeUsers, currentUser]);
 
-  // Sync status indicator
-  const SyncIndicator = () => {
-    if (connectionStatus === 'connected') {
-      return (
-        <span className="hidden md:inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground/70">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-          <span>Saved</span>
-        </span>
-      );
-    }
-    return (
-      <span className="hidden md:inline-flex items-center gap-1.5 text-[11px] font-medium text-amber-500/90">
-        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
-        <span>Syncing...</span>
-      </span>
-    );
-  };
-
   return (
     <div className="h-[100dvh] flex flex-col bg-background text-foreground overflow-hidden">
       {/* Offline Banner */}
@@ -278,38 +260,26 @@ export default function EditorPage() {
       {/* Header Bar */}
       <header className="flex-shrink-0 h-14 bg-card border-b border-border flex items-center justify-between px-3 sm:px-4 gap-2 sm:gap-3 z-30 shadow-xs relative">
         {/* Left: Back Link & Document Title */}
-        <div className="flex items-center gap-2 min-w-0 z-10 max-w-[45%]">
+        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 z-10 max-w-[45%]">
           <Button asChild variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0">
             <Link to="/dashboard" title="Back to Dashboard">
               <ArrowLeft size={17} />
             </Link>
           </Button>
 
-          <div className="min-w-0 flex items-center gap-2">
-            <input
-              type="text"
-              value={title}
-              onChange={handleTitleChange}
-              disabled={!canEditTitle}
-              placeholder="Untitled Document"
-              title={canEditTitle ? 'Click to rename' : 'Only document owner can rename document'}
-              className={`text-sm sm:text-base font-semibold text-foreground bg-transparent rounded-lg px-2 py-0.5 min-w-0 max-w-[130px] sm:max-w-[190px] md:max-w-[260px] truncate transition-all ${
-                canEditTitle
-                  ? 'border border-transparent hover:bg-muted/30 focus:outline-none focus:border-border focus:bg-muted/50 cursor-text'
-                  : 'border-transparent cursor-default select-none'
-              }`}
-            />
-            <SyncIndicator />
-            {isReadOnly ? (
-              <span className="hidden sm:inline-flex items-center text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-md shrink-0">
-                View only
-              </span>
-            ) : effectiveRole !== 'owner' ? (
-              <span className="hidden sm:inline-flex items-center text-[10px] font-medium text-muted-foreground bg-secondary border border-border px-1.5 py-0.5 rounded-md shrink-0">
-                Editor
-              </span>
-            ) : null}
-          </div>
+          <input
+            type="text"
+            value={title}
+            onChange={handleTitleChange}
+            disabled={!canEditTitle}
+            placeholder="Untitled Document"
+            title={canEditTitle ? 'Click to rename' : 'Only document owner can rename document'}
+            className={`text-sm sm:text-base font-semibold text-foreground bg-transparent rounded-lg px-2 py-0.5 min-w-0 max-w-[150px] sm:max-w-[220px] md:max-w-[300px] truncate transition-all ${
+              canEditTitle
+                ? 'border border-transparent hover:bg-muted/30 focus:outline-none focus:border-border focus:bg-muted/50 cursor-text'
+                : 'border-transparent cursor-default select-none'
+            }`}
+          />
         </div>
 
         {/* Center: Tab Switcher (Document vs Whiteboard) — Perfectly Centered & Icon-only */}
@@ -431,6 +401,8 @@ export default function EditorPage() {
                 activeUsers={activeUsers}
                 typingUsers={typingUsers}
                 currentUser={currentUser}
+                currentUserRole={effectiveRole}
+                connectionStatus={connectionStatus}
                 isReadOnly={isReadOnly}
                 onOpenCommentDraft={(text) => {
                   setCommentDraft({ selectedText: text });
@@ -479,6 +451,9 @@ export default function EditorPage() {
           <CollaboratorDock
             activeUsers={activeUsers}
             typingUsers={typingUsers}
+            currentUser={currentUser}
+            currentUserRole={effectiveRole}
+            connectionStatus={connectionStatus}
           />
         </div>
       </main>

@@ -1,7 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Users, ChevronUp, ChevronDown } from 'lucide-react';
 
-export default function CollaboratorDock({ activeUsers = [], typingUsers = [], inline = false }) {
+export default function CollaboratorDock({
+  activeUsers = [],
+  typingUsers = [],
+  currentUser = null,
+  currentUserRole = 'editor',
+  connectionStatus = 'connected',
+  inline = false,
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const dockRef = useRef(null);
 
@@ -23,7 +30,21 @@ export default function CollaboratorDock({ activeUsers = [], typingUsers = [], i
     };
   }, [isOpen]);
 
-  if (activeUsers.length === 0) return null;
+  const displayUsers =
+    activeUsers.length > 0
+      ? activeUsers
+      : currentUser
+      ? [
+          {
+            user_id: currentUser.id,
+            name: currentUser.full_name || currentUser.name || 'You',
+            email: currentUser.email,
+            color: '#6366f1',
+          },
+        ]
+      : [];
+
+  if (displayUsers.length === 0) return null;
 
   return (
     <div
@@ -38,43 +59,81 @@ export default function CollaboratorDock({ activeUsers = [], typingUsers = [], i
         {/* Floating Collaborators List Popover */}
         {isOpen && (
           <div
-            className={`w-[calc(100vw-32px)] max-w-[280px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl p-3 mb-1 animate-in fade-in zoom-in-95 ${
+            className={`w-[calc(100vw-32px)] max-w-[280px] bg-card text-card-foreground border border-border rounded-2xl shadow-xl p-3 mb-1 animate-in fade-in zoom-in-95 ${
               inline ? 'absolute bottom-full left-0 mb-2.5' : 'mb-1'
             }`}
           >
-            <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                  Online Collaborators
-                </span>
+            {/* Top Section: Connection/Sync Status & User Role */}
+            <div className="flex items-center justify-between gap-2 pb-2.5 mb-2.5 border-b border-border">
+              {/* Sync status */}
+              <div className="flex items-center gap-1.5 min-w-0">
+                {connectionStatus === 'connected' ? (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                    <span className="text-xs font-semibold text-foreground truncate">
+                      Saved & Synced
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                    <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 truncate">
+                      Syncing...
+                    </span>
+                  </>
+                )}
               </div>
-              <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
-                {activeUsers.length}
+
+              {/* User Role Pill */}
+              {currentUserRole === 'owner' ? (
+                <span className="text-[10px] font-semibold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-md shrink-0">
+                  Owner
+                </span>
+              ) : currentUserRole === 'viewer' ? (
+                <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-md shrink-0">
+                  View only
+                </span>
+              ) : (
+                <span className="text-[10px] font-medium text-muted-foreground bg-secondary border border-border px-2 py-0.5 rounded-md shrink-0">
+                  Editor
+                </span>
+              )}
+            </div>
+
+            {/* Collaborators Subheader */}
+            <div className="flex items-center justify-between pb-1.5 mb-1 text-[11px] font-medium text-muted-foreground">
+              <span>Active in Document</span>
+              <span className="bg-secondary text-foreground text-[10px] px-1.5 py-0.5 rounded-full font-semibold">
+                {displayUsers.length}
               </span>
             </div>
 
-            <div className="max-h-56 overflow-y-auto space-y-1.5 pr-0.5">
-              {activeUsers.map((u, i) => {
+            {/* Collaborator User List */}
+            <div className="max-h-52 overflow-y-auto space-y-1 pr-0.5">
+              {displayUsers.map((u, i) => {
                 const isTyping = typingUsers.includes(u.user_id);
+                const isMe = currentUser && (u.user_id === currentUser.id || u.email === currentUser.email);
                 return (
                   <div
                     key={u.client_id || u.user_id || i}
-                    className="flex items-center justify-between p-1.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
+                    className="flex items-center justify-between p-1.5 rounded-lg hover:bg-muted/60 transition-colors"
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <div
-                        className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white shadow-sm flex-shrink-0"
+                        className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white shadow-xs shrink-0"
                         style={{ backgroundColor: u.color || '#6366f1' }}
                       >
-                        {(u.name || 'U').charAt(0).toUpperCase()}
+                        {(u.name || u.full_name || 'U').charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-xs font-medium text-slate-900 dark:text-slate-100 truncate">
-                          {u.name || 'Anonymous User'}
+                        <p className="text-xs font-medium text-foreground truncate flex items-center gap-1">
+                          {u.name || u.full_name || 'Anonymous User'}
+                          {isMe && (
+                            <span className="text-[9px] font-normal text-muted-foreground">(you)</span>
+                          )}
                         </p>
                         {u.email && (
-                          <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">
+                          <p className="text-[10px] text-muted-foreground truncate">
                             {u.email}
                           </p>
                         )}
@@ -82,11 +141,11 @@ export default function CollaboratorDock({ activeUsers = [], typingUsers = [], i
                     </div>
 
                     {isTyping ? (
-                      <span className="text-[10px] font-semibold text-indigo-500 dark:text-indigo-400 flex items-center gap-1 flex-shrink-0 animate-pulse">
+                      <span className="text-[10px] font-semibold text-primary flex items-center gap-1 shrink-0 animate-pulse">
                         typing...
                       </span>
                     ) : (
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
                     )}
                   </div>
                 );
@@ -97,11 +156,11 @@ export default function CollaboratorDock({ activeUsers = [], typingUsers = [], i
 
         {/* Typing indicators (floating mode only) */}
         {!inline && typingUsers.length > 0 && !isOpen && (
-          <div className="bg-slate-900 dark:bg-slate-800 text-white text-xs font-medium px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5 animate-in fade-in">
+          <div className="bg-foreground text-background text-xs font-medium px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5 animate-in fade-in">
             <span className="flex gap-0.5 items-center">
-              <span className="w-1.5 h-1.5 bg-white rounded-full animate-bounce [animation-delay:0ms]" />
-              <span className="w-1.5 h-1.5 bg-white rounded-full animate-bounce [animation-delay:100ms]" />
-              <span className="w-1.5 h-1.5 bg-white rounded-full animate-bounce [animation-delay:200ms]" />
+              <span className="w-1.5 h-1.5 bg-background rounded-full animate-bounce [animation-delay:0ms]" />
+              <span className="w-1.5 h-1.5 bg-background rounded-full animate-bounce [animation-delay:100ms]" />
+              <span className="w-1.5 h-1.5 bg-background rounded-full animate-bounce [animation-delay:200ms]" />
             </span>
             {typingUsers.length === 1 ? 'Someone is typing...' : `${typingUsers.length} typing...`}
           </div>
@@ -112,59 +171,71 @@ export default function CollaboratorDock({ activeUsers = [], typingUsers = [], i
           <button
             type="button"
             onClick={() => setIsOpen((prev) => !prev)}
-            className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-[11px] font-medium border border-slate-200 dark:border-slate-700 transition-all cursor-pointer active:scale-95 ${
-              isOpen ? 'ring-2 ring-indigo-500/30 border-indigo-500/50' : ''
+            className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-secondary hover:bg-secondary/80 text-secondary-foreground text-[11px] font-medium border border-border transition-all cursor-pointer active:scale-95 ${
+              isOpen ? 'ring-2 ring-primary/30 border-primary/50' : ''
             }`}
-            title="View online collaborators"
+            title="View document status & collaborators"
           >
-            <Users size={11} className="text-slate-400 dark:text-slate-500 flex-shrink-0" />
+            <Users size={11} className="text-muted-foreground shrink-0" />
             <div className="flex items-center -space-x-1.5">
-              {activeUsers.slice(0, 3).map((u, i) => (
+              {displayUsers.slice(0, 3).map((u, i) => (
                 <div
                   key={u.client_id || u.user_id || i}
-                  className="w-4 h-4 rounded-full border border-white dark:border-slate-900 flex items-center justify-center text-[7px] font-bold text-white flex-shrink-0"
+                  className="w-4 h-4 rounded-full border border-background flex items-center justify-center text-[7px] font-bold text-white shrink-0"
                   style={{ backgroundColor: u.color || '#6366f1' }}
                 >
-                  {(u.name || 'U').charAt(0).toUpperCase()}
+                  {(u.name || u.full_name || 'U').charAt(0).toUpperCase()}
                 </div>
               ))}
             </div>
-            <span>{activeUsers.length} online</span>
+            <span>{displayUsers.length} online</span>
+            <span
+              className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                connectionStatus === 'connected' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'
+              }`}
+              title={connectionStatus === 'connected' ? 'Saved & Synced' : 'Syncing...'}
+            />
             {isOpen ? <ChevronDown size={11} /> : <ChevronUp size={11} />}
           </button>
         ) : (
           <button
             type="button"
             onClick={() => setIsOpen((prev) => !prev)}
-            className={`flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-full px-3 py-1.5 shadow-md hover:shadow-lg hover:border-slate-300 dark:hover:border-slate-600 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500/20 active:scale-95 ${
-              isOpen ? 'ring-2 ring-indigo-500/30 border-indigo-500/50' : ''
+            className={`flex items-center gap-2 bg-card text-card-foreground border border-border rounded-full px-3 py-1.5 shadow-md hover:shadow-lg hover:border-border/80 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20 active:scale-95 ${
+              isOpen ? 'ring-2 ring-primary/30 border-primary/50' : ''
             }`}
-            title="Click to view online collaborators"
+            title="Click to view document status & collaborators"
           >
-            <Users size={13} className="text-slate-400 dark:text-slate-500 flex-shrink-0" />
-            <div className="flex items-center -space-x-2">
-              {activeUsers.slice(0, 4).map((u, i) => (
+            <Users size={13} className="text-muted-foreground shrink-0" />
+            <div className="flex items-center -space-x-1.5">
+              {displayUsers.slice(0, 4).map((u, i) => (
                 <div
                   key={u.client_id || u.user_id || i}
-                  className="w-5 h-5 rounded-full border-2 border-white dark:border-slate-900 flex items-center justify-center text-[9px] font-bold text-white shadow-sm flex-shrink-0"
+                  className="w-5 h-5 rounded-full border-2 border-card flex items-center justify-center text-[9px] font-bold text-white shadow-xs shrink-0"
                   style={{ backgroundColor: u.color || '#6366f1' }}
                 >
-                  {(u.name || 'U').charAt(0).toUpperCase()}
+                  {(u.name || u.full_name || 'U').charAt(0).toUpperCase()}
                 </div>
               ))}
-              {activeUsers.length > 4 && (
-                <div className="w-5 h-5 rounded-full border-2 border-white dark:border-slate-900 bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[8px] font-bold text-slate-600 dark:text-slate-300">
-                  +{activeUsers.length - 4}
+              {displayUsers.length > 4 && (
+                <div className="w-5 h-5 rounded-full border-2 border-card bg-muted text-muted-foreground flex items-center justify-center text-[8px] font-bold">
+                  +{displayUsers.length - 4}
                 </div>
               )}
             </div>
-            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-              {activeUsers.length} online
+            <span className="text-xs font-semibold text-foreground">
+              {displayUsers.length} online
             </span>
+            <span
+              className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                connectionStatus === 'connected' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'
+              }`}
+              title={connectionStatus === 'connected' ? 'Saved & Synced' : 'Syncing...'}
+            />
             {isOpen ? (
-              <ChevronDown size={13} className="text-slate-400 dark:text-slate-500" />
+              <ChevronDown size={13} className="text-muted-foreground" />
             ) : (
-              <ChevronUp size={13} className="text-slate-400 dark:text-slate-500" />
+              <ChevronUp size={13} className="text-muted-foreground" />
             )}
           </button>
         )}

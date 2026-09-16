@@ -24,6 +24,8 @@ export default function TipTapEditor({
   activeUsers = [],
   typingUsers = [],
   currentUser,
+  currentUserRole = 'editor',
+  connectionStatus = 'connected',
   isReadOnly = false,
   onOpenCommentDraft,
   onContentChange,
@@ -167,15 +169,16 @@ export default function TipTapEditor({
         <div className="flex justify-between items-center px-4 sm:px-6 py-2 text-[11px] font-medium text-muted-foreground border-t border-border bg-background/80 backdrop-blur-sm">
           <div className="flex items-center gap-2 sm:gap-3">
             {/* Mobile-Only Collaborator Presence inside the bottom bar */}
-            {activeUsers.length > 0 && (
-              <div className="sm:hidden">
-                <CollaboratorDock
-                  activeUsers={activeUsers}
-                  typingUsers={typingUsers}
-                  inline
-                />
-              </div>
-            )}
+            <div className="sm:hidden">
+              <CollaboratorDock
+                activeUsers={activeUsers}
+                typingUsers={typingUsers}
+                currentUser={currentUser}
+                currentUserRole={currentUserRole}
+                connectionStatus={connectionStatus}
+                inline
+              />
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <span>{stats.words} words</span>
