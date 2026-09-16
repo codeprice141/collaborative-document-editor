@@ -18,6 +18,8 @@ class ConnectionManager:
         self._rooms: Dict[int, Dict[str, WebSocket]] = defaultdict(dict)
         # {WebSocket: (doc_id, client_id)}
         self._socket_lookup: Dict[WebSocket, tuple] = {}
+        # {user_id: Set[WebSocket]} for targeted user alerts across app
+        self._user_sockets: Dict[int, Set[WebSocket]] = defaultdict(set)
         # {doc_id: asyncio.Task} for Redis listener tasks
         self._pubsub_tasks: Dict[int, asyncio.Task] = {}
         # Unique node ID for multi-pod mesh deduplication
@@ -57,6 +59,33 @@ class ConnectionManager:
             await websocket.send_json(message)
         except Exception as exc:
             logger.warning("Failed to send personal message: %s", exc)
+
+    async def connect_user(self, user_id: int, websocket: WebSocket):
+        """Registers a user-level notification WebSocket for dashboard / global alerts."""
+        await websocket.accept()
+        self._user_sockets[user_id].add(websocket)
+        logger.info("User notification socket connected [user_id=%s, total=%d]", user_id, len(self._user_sockets[user_id]))
+
+    def disconnect_user(self, user_id: int, websocket: WebSocket):
+        """Unregisters user-level notification WebSocket."""
+        if user_id in self._user_sockets:
+            self._user_sockets[user_id].discard(websocket)
+            if not self._user_sockets[user_id]:
+                self._user_sockets.pop(user_id, None)
+        logger.info("User notification socket disconnected [user_id=%s]", user_id)
+
+    async def send_to_user(self, user_id: int, message: dict):
+        """Sends targeted alert to all active sessions of a user (e.g. Dashboard live injection)."""
+        sockets = list(self._user_sockets.get(user_id, []))
+        dead = []
+        for ws in sockets:
+            try:
+                await ws.send_json(message)
+            except Exception as exc:
+                logger.debug("Failed sending to user socket [user_id=%s]: %s", user_id, exc)
+                dead.append(ws)
+        for ws in dead:
+            self.disconnect_user(user_id, ws)
 
     async def send_to_client(self, doc_id: int, client_id: str, message: dict):
         """Sends targeted JSON message to specific client in room."""

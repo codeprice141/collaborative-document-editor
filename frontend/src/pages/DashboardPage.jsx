@@ -4,6 +4,8 @@ import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import ConfirmModal from '../components/ConfirmModal';
+import Toast from '../components/Toast';
+import { useUserNotifications } from '../hooks/useUserNotifications';
 import {
   Plus,
   Search,
@@ -142,6 +144,30 @@ export default function DashboardPage() {
   const [creating, setCreating] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null); // { id, title }
   const [deleting, setDeleting] = useState(false);
+  const [toast, setToast] = useState({ message: '', type: 'success' });
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+  };
+
+  // Real-time live document injection and notification listener (Zero page refresh!)
+  useUserNotifications({
+    onDocumentShared: (payload) => {
+      if (payload.document) {
+        setDocs((prev) => [
+          payload.document,
+          ...prev.filter((d) => d.id !== payload.document.id),
+        ]);
+        showToast(
+          payload.message || `🎉 Added as ${payload.role} to "${payload.document.title}"!`,
+          'success'
+        );
+      }
+    },
+    onMention: (payload) => {
+      showToast(payload.message || '💬 You were mentioned in a document!', 'info');
+    },
+  });
 
   const fetchDocs = async () => {
     try {
@@ -325,6 +351,12 @@ export default function DashboardPage() {
         loading={deleting}
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
+      />
+
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast({ message: '', type: 'success' })}
       />
     </div>
   );

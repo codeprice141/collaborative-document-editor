@@ -18,6 +18,7 @@ from app.schemas.document import (
     SnapshotCreate,
     SnapshotResponse,
 )
+from app.websocket.connection_manager import manager
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -191,7 +192,7 @@ def delete_document(
 
 
 @router.post("/{doc_id}/share", response_model=CollaboratorResponse)
-def share_document(
+async def share_document(
     doc_id: int,
     share_in: CollaboratorAddRequest,
     db: Session = Depends(get_db),
@@ -222,6 +223,39 @@ def share_document(
     collab = DocumentService.add_or_update_collaborator(
         db, doc_id, target_user.id, share_in.role
     )
+
+    # Real-time instant notification dispatch to target user (e.g. Dashboard live injection)
+    role_str = share_in.role.value if hasattr(share_in.role, "value") else str(share_in.role)
+    doc_payload = {
+        "id": doc.id,
+        "title": doc.title,
+        "content": doc.content,
+        "drawing_data": doc.drawing_data,
+        "version": doc.version,
+        "owner_id": doc.owner_id,
+        "is_archived": doc.is_archived,
+        "is_public": doc.is_public,
+        "public_role": doc.public_role,
+        "created_at": doc.created_at.isoformat() if doc.created_at else None,
+        "updated_at": doc.updated_at.isoformat() if doc.updated_at else None,
+        "user_role": role_str,
+        "owner": {
+            "id": current_user.id,
+            "email": current_user.email,
+            "full_name": current_user.full_name,
+        },
+    }
+    await manager.send_to_user(
+        target_user.id,
+        {
+            "type": "document_shared",
+            "document": doc_payload,
+            "role": role_str,
+            "sender_name": current_user.full_name or current_user.email,
+            "message": f"{current_user.full_name or 'A collaborator'} added you as {role_str} to '{doc.title}'",
+        },
+    )
+
     return collab
 
 

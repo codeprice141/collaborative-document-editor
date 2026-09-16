@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useEffect, useRef, useState, useCallback } from 'react';
+import React, { lazy, Suspense, useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -11,6 +11,7 @@ import RevisionHistoryDrawer from '../components/RevisionHistoryDrawer';
 import CommentsDrawer from '../components/CommentsDrawer';
 import ExportModal from '../components/ExportModal';
 import Toast from '../components/Toast';
+import { playNotificationChime } from '../utils/audio';
 import {
   ArrowLeft, Share2, History, FileText, Palette,
   MessageSquare, Download, Sun, Moon, WifiOff,
@@ -40,6 +41,7 @@ export default function EditorPage() {
   const [showShare, setShowShare] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showComments, setShowComments] = useState(false);
+  const [unreadCommentsCount, setUnreadCommentsCount] = useState(0);
   const [showExport, setShowExport] = useState(false);
   const [commentDraft, setCommentDraft] = useState(null);
   const [toast, setToast] = useState({ message: '', type: 'success' });
@@ -56,12 +58,30 @@ export default function EditorPage() {
 
   const handleRemoteComment = useCallback((data) => {
     setIncomingComment(data);
-    const myName = currentUser?.full_name?.toLowerCase() || '';
-    const isMentioned = (data.mentioned_names || []).some(n =>
-      myName && n.toLowerCase().includes(myName.split(' ')[0])
-    );
-    if (isMentioned && data.sender_id !== currentUser?.id) {
-      showToast(`💬 ${data.sender_name} mentioned you!`, 'info');
+    if (!data || data.sender_id === currentUser?.id) return;
+
+    const isMentioned =
+      (data.mentioned_user_ids || []).includes(currentUser?.id) ||
+      (data.mentioned_emails || []).some(
+        (e) => currentUser?.email && e.toLowerCase() === currentUser.email.toLowerCase()
+      ) ||
+      (data.mentioned_names || []).some((n) => {
+        const myName = currentUser?.full_name?.toLowerCase() || '';
+        return myName && n.toLowerCase().includes(myName.split(' ')[0]);
+      });
+
+    if (isMentioned) {
+      playNotificationChime();
+      showToast(`💬 ${data.sender_name} mentioned you in a comment!`, 'info');
+      setShowComments(true);
+      setUnreadCommentsCount(0);
+    } else {
+      setShowComments((isOpen) => {
+        if (!isOpen) {
+          setUnreadCommentsCount((c) => c + 1);
+        }
+        return isOpen;
+      });
     }
   }, [currentUser]);
 
@@ -162,6 +182,68 @@ export default function EditorPage() {
   }, [syncHtmlContent, isReadOnly, docId]);
 
   const collaborators = docMeta?.collaborators || [];
+
+  // Normalized, deduplicated candidate directory for @mentions
+  const mentionableUsers = useMemo(() => {
+    const map = new Map();
+
+    // 1. Document Owner
+    if (docMeta?.owner) {
+      const ownerId = docMeta.owner.id || docMeta.owner_id;
+      map.set(ownerId, {
+        user_id: ownerId,
+        full_name: docMeta.owner.full_name || docMeta.owner.email || 'Owner',
+        email: docMeta.owner.email || '',
+        role: 'owner',
+        is_online: (activeUsers || []).some((u) => u.user_id === ownerId),
+      });
+    }
+
+    // 2. Persistent Stored Collaborators
+    (docMeta?.collaborators || []).forEach((c) => {
+      const uid = c.user_id || c.user?.id || c.id;
+      if (!uid) return;
+      if (!map.has(uid)) {
+        map.set(uid, {
+          user_id: uid,
+          full_name:
+            c.user?.full_name || c.full_name || c.user?.email || c.email || 'Collaborator',
+          email: c.user?.email || c.email || '',
+          role: (c.role || 'editor').toLowerCase(),
+          is_online: (activeUsers || []).some((u) => u.user_id === uid),
+        });
+      }
+    });
+
+    // 3. Live Active Peers in Room
+    (activeUsers || []).forEach((u) => {
+      if (!u.user_id) return;
+      const existing = map.get(u.user_id);
+      if (existing) {
+        existing.is_online = true;
+      } else {
+        map.set(u.user_id, {
+          user_id: u.user_id,
+          full_name: u.name || u.email || 'User',
+          email: u.email || '',
+          role: 'viewer',
+          is_online: true,
+        });
+      }
+    });
+
+    // Exclude current user from self-mentioning
+    if (currentUser?.id) {
+      map.delete(currentUser.id);
+    }
+
+    // Online users first, then alphabetical
+    return Array.from(map.values()).sort((a, b) => {
+      if (a.is_online && !b.is_online) return -1;
+      if (!a.is_online && b.is_online) return 1;
+      return (a.full_name || '').localeCompare(b.full_name || '');
+    });
+  }, [docMeta, activeUsers, currentUser]);
 
   // Sync status indicator
   const SyncIndicator = () => {
@@ -282,12 +364,20 @@ export default function EditorPage() {
           <Button
             variant={showComments ? 'secondary' : 'ghost'}
             size="sm"
-            onClick={() => setShowComments((s) => !s)}
-            className="h-8 px-2.5 gap-1.5 text-xs font-semibold"
+            onClick={() => {
+              setShowComments((s) => !s);
+              setUnreadCommentsCount(0);
+            }}
+            className="relative h-8 px-2.5 gap-1.5 text-xs font-semibold"
             title="Comments"
           >
             <MessageSquare size={14} />
             <span className="hidden md:inline">Comments</span>
+            {unreadCommentsCount > 0 && !showComments && (
+              <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-brand-600 text-[10px] font-bold text-white shadow-xs animate-in zoom-in">
+                {unreadCommentsCount}
+              </span>
+            )}
           </Button>
 
           {/* Export Button */}
@@ -421,7 +511,7 @@ export default function EditorPage() {
         <CommentsDrawer
           docId={docId}
           currentUserId={currentUser?.id}
-          allCollaborators={collaborators}
+          allCollaborators={mentionableUsers}
           initialDraft={commentDraft}
           onClearDraft={() => setCommentDraft(null)}
           onSendCommentEvent={sendCommentEvent}

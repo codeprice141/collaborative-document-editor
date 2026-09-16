@@ -296,6 +296,7 @@ async def handle_websocket_connection(
 
             # --- Real-Time Comment & Mention Events ---
             elif msg_type == "comment_event":
+                mentioned_user_ids = msg.get("mentioned_user_ids", [])
                 await manager.broadcast_to_room(
                     document_id,
                     {
@@ -304,11 +305,31 @@ async def handle_websocket_connection(
                         "comment": msg.get("comment"),
                         "sender_name": user.full_name,
                         "sender_id": user.id,
+                        "mentioned_user_ids": mentioned_user_ids,
                         "mentioned_emails": msg.get("mentioned_emails", []),
                         "mentioned_names": msg.get("mentioned_names", []),
                     },
                     exclude_client_id=client_id,
                 )
+
+                # Cross-room user notification for mentioned users (e.g. on Dashboard or other doc)
+                for uid in mentioned_user_ids:
+                    try:
+                        uid_int = int(uid)
+                        if uid_int != user.id:
+                            await manager.send_to_user(
+                                uid_int,
+                                {
+                                    "type": "mention_notification",
+                                    "document_id": document_id,
+                                    "document_title": doc.title if doc else "Document",
+                                    "sender_name": user.full_name or user.email,
+                                    "comment": msg.get("comment"),
+                                    "message": f"{user.full_name or 'A collaborator'} mentioned you in '{doc.title if doc else 'a document'}'",
+                                },
+                            )
+                    except Exception as err:
+                        logger.debug("Failed sending mention to user %s: %s", uid, err)
 
             # --- Reconnect Recovery Request ---
             elif msg_type == "sync_request":

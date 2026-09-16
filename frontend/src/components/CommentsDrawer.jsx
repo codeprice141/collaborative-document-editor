@@ -25,28 +25,79 @@ function Avatar({ name = '', size = 'sm' }) {
   );
 }
 
-function MentionDropdown({ query, collaborators, onSelect }) {
-  if (!query || !collaborators.length) return null;
-  const matches = collaborators.filter(c =>
-    (c.email || '').toLowerCase().includes(query.toLowerCase()) ||
-    (c.full_name || '').toLowerCase().includes(query.toLowerCase())
-  ).slice(0, 5);
+function renderCommentText(text) {
+  if (!text) return '';
+  const parts = text.split(/(@[a-zA-Z0-9_.\-\s]+?(?=\s|[.,!?]|$))/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('@')) {
+      return (
+        <span
+          key={i}
+          className="inline-flex items-center font-semibold text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-950/60 px-1 py-0.2 rounded"
+        >
+          {part}
+        </span>
+      );
+    }
+    return part;
+  });
+}
+
+function MentionDropdown({ query, collaborators = [], onSelect }) {
+  if (query === null || query === undefined || !collaborators.length) return null;
+  const q = query.trim().toLowerCase();
+  const matches = collaborators.filter(c => {
+    if (!q) return true;
+    const name = (c.full_name || '').toLowerCase();
+    const email = (c.email || '').toLowerCase();
+    return name.includes(q) || email.includes(q);
+  }).slice(0, 6);
+
   if (!matches.length) return null;
 
   return (
-    <div className="absolute bottom-full left-0 mb-1 w-full z-50 animate-fade-in">
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-elevated overflow-hidden">
+    <div className="absolute bottom-full left-0 mb-1.5 w-full z-50 animate-in fade-in zoom-in-95">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden p-1">
+        <div className="px-2.5 py-1 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+          Mention Collaborator
+        </div>
         {matches.map(c => (
           <button
-            key={c.id}
+            key={c.user_id || c.id || c.email}
+            type="button"
             onMouseDown={e => { e.preventDefault(); onSelect(c); }}
-            className="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-left"
+            className="w-full flex items-center justify-between gap-2 px-2.5 py-2 hover:bg-slate-100 dark:hover:bg-slate-800/80 rounded-xl transition-all text-left group cursor-pointer"
           >
-            <Avatar name={c.full_name || c.email} size="sm" />
-            <div>
-              <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{c.full_name || c.email}</p>
-              <p className="text-xs text-slate-400 dark:text-slate-500">{c.email}</p>
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="relative">
+                <Avatar name={c.full_name || c.email} size="sm" />
+                {c.is_online && (
+                  <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900" />
+                )}
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <p className="text-xs font-semibold text-slate-900 dark:text-slate-100 truncate group-hover:text-brand-600 dark:group-hover:text-brand-400">
+                    {c.full_name || c.email}
+                  </p>
+                  {c.is_online && (
+                    <span className="text-[9px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-1 py-0.2 rounded">
+                      online
+                    </span>
+                  )}
+                </div>
+                {c.email && (
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">
+                    {c.email}
+                  </p>
+                )}
+              </div>
             </div>
+            {c.role && (
+              <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-md shrink-0">
+                {c.role}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -60,7 +111,7 @@ function CommentCard({ comment, currentUserId, docId, onDeleted, allCollaborator
   const [replies, setReplies] = useState(comment.replies || []);
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [mentionQuery, setMentionQuery] = useState('');
+  const [mentionQuery, setMentionQuery] = useState(null);
   const [mentions, setMentions] = useState([]);
   const textRef = useRef(null);
   const isOwner = comment.user_id === currentUserId;
@@ -68,11 +119,14 @@ function CommentCard({ comment, currentUserId, docId, onDeleted, allCollaborator
   const insertMention = (c) => {
     const val = replyText;
     const pos = val.lastIndexOf('@');
-    const name = c.full_name || c.email;
-    const updated = val.slice(0, pos) + `@${name} `;
+    const name = c.full_name || c.email || 'User';
+    const updated = (pos >= 0 ? val.slice(0, pos) : val) + `@${name} `;
     setReplyText(updated);
-    setMentionQuery('');
-    setMentions(prev => [...prev, c]);
+    setMentionQuery(null);
+    setMentions(prev => {
+      const exists = prev.some(m => (m.user_id && m.user_id === c.user_id) || (m.email && m.email === c.email));
+      return exists ? prev : [...prev, c];
+    });
     if (textRef.current) textRef.current.focus();
   };
 
@@ -81,9 +135,14 @@ function CommentCard({ comment, currentUserId, docId, onDeleted, allCollaborator
     setReplyText(val);
     const at = val.lastIndexOf('@');
     if (at !== -1 && (at === 0 || /\s/.test(val[at - 1]))) {
-      setMentionQuery(val.slice(at + 1));
+      const q = val.slice(at + 1);
+      if (q.includes('\n') || q.length > 25) {
+        setMentionQuery(null);
+      } else {
+        setMentionQuery(q);
+      }
     } else {
-      setMentionQuery('');
+      setMentionQuery(null);
     }
   };
 
@@ -93,11 +152,19 @@ function CommentCard({ comment, currentUserId, docId, onDeleted, allCollaborator
     try {
       const r = await api.createReply(docId, comment.id, { content: replyText.trim() });
       setReplies(prev => [...prev, r]);
+      const currentMentions = [...mentions];
       setReplyText('');
       setMentions([]);
+      setMentionQuery(null);
       setReplyOpen(false);
       if (onSendEvent) {
-        onSendEvent({ action: 'created', comment: r, mentioned_emails: mentions.map(m => m.email), mentioned_names: mentions.map(m => m.full_name) });
+        onSendEvent({
+          action: 'created',
+          comment: r,
+          mentioned_user_ids: currentMentions.map(m => m.user_id).filter(Boolean),
+          mentioned_emails: currentMentions.map(m => m.email).filter(Boolean),
+          mentioned_names: currentMentions.map(m => m.full_name || m.email),
+        });
       }
     } catch { /* silent */ } finally { setLoading(false); }
   };
@@ -141,7 +208,9 @@ function CommentCard({ comment, currentUserId, docId, onDeleted, allCollaborator
       )}
 
       {/* Content */}
-      <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">{comment.content}</p>
+      <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
+        {renderCommentText(comment.content)}
+      </p>
 
       {/* Replies */}
       {replies.length > 0 && (
@@ -155,7 +224,9 @@ function CommentCard({ comment, currentUserId, docId, onDeleted, allCollaborator
                   <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">{r.user_name || 'User'}</span>
                   <span className="text-[10px] text-slate-400 dark:text-slate-500">{relativeTime(r.created_at)}</span>
                 </div>
-                <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">{r.content}</p>
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 whitespace-pre-wrap">
+                  {renderCommentText(r.content)}
+                </p>
               </div>
             </div>
           ))}
@@ -214,7 +285,7 @@ export default function CommentsDrawer({
   const [selectedText, setSelectedText] = useState(initialDraft?.selectedText || '');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [mentionQuery, setMentionQuery] = useState('');
+  const [mentionQuery, setMentionQuery] = useState(null);
   const [mentions, setMentions] = useState([]);
   const textRef = useRef(null);
 
@@ -244,10 +315,13 @@ export default function CommentsDrawer({
   const insertMention = (c) => {
     const val = newComment;
     const pos = val.lastIndexOf('@');
-    const name = c.full_name || c.email;
-    setNewComment(val.slice(0, pos) + `@${name} `);
-    setMentionQuery('');
-    setMentions(prev => [...prev, c]);
+    const name = c.full_name || c.email || 'User';
+    setNewComment((pos >= 0 ? val.slice(0, pos) : val) + `@${name} `);
+    setMentionQuery(null);
+    setMentions(prev => {
+      const exists = prev.some(m => (m.user_id && m.user_id === c.user_id) || (m.email && m.email === c.email));
+      return exists ? prev : [...prev, c];
+    });
     textRef.current?.focus();
   };
 
@@ -256,9 +330,14 @@ export default function CommentsDrawer({
     setNewComment(val);
     const at = val.lastIndexOf('@');
     if (at !== -1 && (at === 0 || /\s/.test(val[at - 1]))) {
-      setMentionQuery(val.slice(at + 1));
+      const q = val.slice(at + 1);
+      if (q.includes('\n') || q.length > 25) {
+        setMentionQuery(null);
+      } else {
+        setMentionQuery(q);
+      }
     } else {
-      setMentionQuery('');
+      setMentionQuery(null);
     }
   };
 
@@ -271,11 +350,19 @@ export default function CommentsDrawer({
         selected_text: selectedText || null,
       });
       setComments(prev => [c, ...prev]);
+      const currentMentions = [...mentions];
       setNewComment('');
       setSelectedText('');
       setMentions([]);
+      setMentionQuery(null);
       if (onSendCommentEvent) {
-        onSendCommentEvent({ action: 'created', comment: c, mentioned_emails: mentions.map(m => m.email), mentioned_names: mentions.map(m => m.full_name) });
+        onSendCommentEvent({
+          action: 'created',
+          comment: c,
+          mentioned_user_ids: currentMentions.map(m => m.user_id).filter(Boolean),
+          mentioned_emails: currentMentions.map(m => m.email).filter(Boolean),
+          mentioned_names: currentMentions.map(m => m.full_name || m.email),
+        });
       }
     } catch { /* silent */ } finally { setSubmitting(false); }
   };
