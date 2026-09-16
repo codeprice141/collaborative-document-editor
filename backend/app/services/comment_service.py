@@ -28,7 +28,7 @@ class CommentService:
         )
 
     @staticmethod
-    def list_comments(db: Session, doc_id: int) -> List[DocumentComment]:
+    def list_comments(db: Session, doc_id: int, limit: int = 20, skip: int = 0) -> List[DocumentComment]:
         return (
             db.query(DocumentComment)
             .options(
@@ -36,7 +36,9 @@ class CommentService:
                 joinedload(DocumentComment.replies).joinedload(DocumentCommentReply.user),
             )
             .filter(DocumentComment.document_id == doc_id)
-            .order_by(DocumentComment.created_at.asc())
+            .order_by(DocumentComment.created_at.desc())
+            .offset(skip)
+            .limit(limit)
             .all()
         )
 

@@ -32,6 +32,8 @@ def create_comment(
 @router.get("", response_model=List[CommentResponse])
 def list_comments(
     doc_id: int,
+    limit: int = 20,
+    skip: int = 0,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -41,7 +43,7 @@ def list_comments(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Document not found or access denied",
         )
-    return CommentService.list_comments(db, doc_id)
+    return CommentService.list_comments(db, doc_id, limit=limit, skip=skip)
 
 
 @router.patch("/{comment_id}/resolve", response_model=CommentResponse)

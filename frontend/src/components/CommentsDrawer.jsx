@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from '../services/api';
-import { X, Send, MessageSquare, AtSign, CornerDownRight, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, Send, MessageSquare, CornerDownRight, Trash2, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { formatRelativeTime } from '../utils/date';
 
 function Avatar({ name = '', size = 'sm' }) {
@@ -256,23 +256,29 @@ function CommentCard({ comment, currentUserId, docId, onDeleted, allCollaborator
       {/* Reply Input */}
       {replyOpen && (
         <div className="mt-3 relative animate-fade-in">
-          <MentionDropdown query={mentionQuery} collaborators={allCollaborators} onSelect={insertMention} />
-          <div className="flex gap-2">
+          <div className="relative">
+            <MentionDropdown query={mentionQuery} collaborators={allCollaborators} onSelect={insertMention} />
             <textarea
               ref={textRef}
               value={replyText}
               onChange={handleInput}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !mentionQuery) { e.preventDefault(); handleReply(); }}}
-              placeholder="Write a reply... use @ to mention"
+              placeholder="Write a reply... (use @ to mention)"
               rows={2}
-              className="flex-1 text-sm px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition-all resize-none"
+              className="w-full text-sm pl-3 pr-10 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition-all resize-none shadow-xs"
             />
             <button
+              type="button"
               onClick={handleReply}
               disabled={!replyText.trim() || loading}
-              className="h-10 w-10 flex-shrink-0 rounded-xl bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white flex items-center justify-center transition-all shadow-sm self-end"
+              className="absolute right-2 bottom-2 w-6 h-6 rounded-full bg-brand-600 hover:bg-brand-700 disabled:opacity-30 disabled:hover:bg-brand-600 text-white flex items-center justify-center transition-all shadow-xs cursor-pointer disabled:cursor-not-allowed"
+              title="Send reply"
             >
-              <Send size={14} />
+              {loading ? (
+                <Loader2 size={11} className="animate-spin" />
+              ) : (
+                <Send size={11} className="-ml-0.5" />
+              )}
             </button>
           </div>
         </div>
@@ -285,14 +291,18 @@ export default function CommentsDrawer({
   docId, currentUserId, allCollaborators = [], initialDraft = null,
   onClearDraft, onSendCommentEvent, incomingCommentEvent, onClose,
 }) {
+  const PAGE_SIZE = 20;
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState(initialDraft?.selectedText ? '' : '');
   const [selectedText, setSelectedText] = useState(initialDraft?.selectedText || '');
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [mentionQuery, setMentionQuery] = useState(null);
   const [mentions, setMentions] = useState([]);
   const textRef = useRef(null);
+  const sentinelRef = useRef(null);
 
   useEffect(() => {
     if (initialDraft?.selectedText) {
@@ -302,9 +312,63 @@ export default function CommentsDrawer({
     }
   }, [initialDraft]);
 
+  // Initial load - fetch newest 20 comments
   useEffect(() => {
-    api.getComments(docId).then(data => setComments(data)).catch(() => {}).finally(() => setLoading(false));
+    let isMounted = true;
+    setLoading(true);
+    api.getComments(docId, PAGE_SIZE, 0)
+      .then(data => {
+        if (!isMounted) return;
+        const list = Array.isArray(data) ? data : [];
+        setComments(list);
+        setHasMore(list.length >= PAGE_SIZE);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+    return () => { isMounted = false; };
   }, [docId]);
+
+  // Load more older comments (pagination)
+  const loadMoreComments = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const olderData = await api.getComments(docId, PAGE_SIZE, comments.length);
+      if (olderData && olderData.length > 0) {
+        setComments(prev => {
+          const seen = new Set(prev.map(c => c.id));
+          const uniqueOlder = olderData.filter(c => !seen.has(c.id));
+          return [...prev, ...uniqueOlder];
+        });
+        if (olderData.length < PAGE_SIZE) {
+          setHasMore(false);
+        }
+      } else {
+        setHasMore(false);
+      }
+    } catch {
+      // keep hasMore on error
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [docId, comments.length, loadingMore, hasMore]);
+
+  // Infinite scroll observer for loading older comments
+  useEffect(() => {
+    if (!sentinelRef.current || !hasMore || loading || loadingMore) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          loadMoreComments();
+        }
+      },
+      { threshold: 0.1 }
+    );
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [hasMore, loading, loadingMore, loadMoreComments]);
 
   useEffect(() => {
     if (incomingCommentEvent?.action === 'created' && incomingCommentEvent.comment) {
@@ -312,7 +376,8 @@ export default function CommentsDrawer({
       if (c.parent_comment_id) {
         setComments(prev => prev.map(cm => cm.id === c.parent_comment_id ? { ...cm, replies: [...(cm.replies || []), c] } : cm));
       } else {
-        setComments(prev => [c, ...prev]);
+        // Prepend newest comment to top
+        setComments(prev => [c, ...prev.filter(item => item.id !== c.id)]);
       }
     }
   }, [incomingCommentEvent]);
@@ -347,14 +412,15 @@ export default function CommentsDrawer({
   };
 
   const handleSubmit = async () => {
-    if (!newComment.trim()) return;
+    if (!newComment.trim() || submitting) return;
     setSubmitting(true);
     try {
       const c = await api.createComment(docId, {
         content: newComment.trim(),
         selected_text: selectedText || null,
       });
-      setComments(prev => [c, ...prev]);
+      // Prepend newest comment to top
+      setComments(prev => [c, ...prev.filter(item => item.id !== c.id)]);
       const currentMentions = [...mentions];
       setNewComment('');
       setSelectedText('');
@@ -381,7 +447,7 @@ export default function CommentsDrawer({
           <h2 className="font-semibold text-slate-900 dark:text-slate-100">Comments</h2>
           {comments.length > 0 && (
             <span className="text-xs font-bold bg-brand-100 dark:bg-brand-900/40 text-brand-700 dark:text-brand-300 px-2 py-0.5 rounded-full">
-              {comments.length}
+              {comments.length}{hasMore ? '+' : ''}
             </span>
           )}
         </div>
@@ -393,42 +459,44 @@ export default function CommentsDrawer({
         </button>
       </div>
 
-      {/* New Comment Input */}
-      <div className="flex-shrink-0 px-4 py-3.5 border-b border-slate-200 dark:border-slate-800 relative">
+      {/* New Comment Input (WhatsApp-style inline send button) */}
+      <div className="flex-shrink-0 px-4 py-3 border-b border-slate-200 dark:border-slate-800 relative">
         {selectedText && (
-          <div className="flex items-start gap-1.5 mb-2.5 px-3 py-2 bg-brand-50 dark:bg-brand-950/30 border-l-2 border-brand-400 rounded-r-xl">
+          <div className="flex items-start gap-1.5 mb-2 px-3 py-1.5 bg-brand-50 dark:bg-brand-950/30 border-l-2 border-brand-400 rounded-r-xl">
             <p className="text-xs text-brand-700 dark:text-brand-300 italic line-clamp-2 flex-1">"{selectedText}"</p>
             <button onClick={() => setSelectedText('')} className="text-brand-400 hover:text-brand-600 dark:hover:text-brand-300 flex-shrink-0">
               <X size={12} />
             </button>
           </div>
         )}
-        <MentionDropdown query={mentionQuery} collaborators={allCollaborators} onSelect={insertMention} />
-        <textarea
-          ref={textRef}
-          value={newComment}
-          onChange={handleInput}
-          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !mentionQuery) { e.preventDefault(); handleSubmit(); } }}
-          placeholder="Add a comment... use @ to mention"
-          rows={3}
-          className="w-full text-sm px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition-all resize-none"
-        />
-        <div className="flex items-center justify-between mt-2">
-          <p className="text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1">
-            <AtSign size={11} />mention a collaborator
-          </p>
+        <div className="relative">
+          <MentionDropdown query={mentionQuery} collaborators={allCollaborators} onSelect={insertMention} />
+          <textarea
+            ref={textRef}
+            value={newComment}
+            onChange={handleInput}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !mentionQuery) { e.preventDefault(); handleSubmit(); } }}
+            placeholder="Write a comment... (use @ to mention)"
+            rows={2}
+            className="w-full text-sm pl-3.5 pr-11 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition-all resize-none shadow-xs"
+          />
           <button
+            type="button"
             onClick={handleSubmit}
             disabled={!newComment.trim() || submitting}
-            className="flex items-center gap-1.5 h-8 px-3.5 rounded-xl bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-xs font-semibold transition-all shadow-sm"
+            className="absolute right-2.5 bottom-2.5 w-7 h-7 rounded-full bg-brand-600 hover:bg-brand-700 disabled:opacity-30 disabled:hover:bg-brand-600 text-white flex items-center justify-center transition-all shadow-xs cursor-pointer disabled:cursor-not-allowed"
+            title="Send comment"
           >
-            <Send size={13} />
-            {submitting ? 'Posting...' : 'Post'}
+            {submitting ? (
+              <Loader2 size={13} className="animate-spin" />
+            ) : (
+              <Send size={12} className="-ml-0.5" />
+            )}
           </button>
         </div>
       </div>
 
-      {/* Comments List */}
+      {/* Comments List (Newest at top, Oldest at bottom) */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
         {loading && (
           <div className="space-y-3">
@@ -460,6 +528,21 @@ export default function CommentsDrawer({
             </div>
           ))}
         </div>
+
+        {/* Older comments pagination sentinel / loader */}
+        {hasMore && !loading && (
+          <div ref={sentinelRef} className="py-2 text-center">
+            <button
+              type="button"
+              onClick={loadMoreComments}
+              disabled={loadingMore}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-600 dark:text-brand-400 hover:underline disabled:opacity-50 py-1 px-3"
+            >
+              {loadingMore && <Loader2 size={12} className="animate-spin" />}
+              {loadingMore ? 'Loading older comments...' : 'Load older comments'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

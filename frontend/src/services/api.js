@@ -154,8 +154,8 @@ export const api = {
 
 
   // --- Comments ---
-  async getComments(docId) {
-    const res = await fetch(`${API_BASE}/documents/${docId}/comments`, { headers: getAuthHeaders() });
+  async getComments(docId, limit = 20, skip = 0) {
+    const res = await fetch(`${API_BASE}/documents/${docId}/comments?limit=${limit}&skip=${skip}`, { headers: getAuthHeaders() });
     return handleResponse(res, 'Failed to fetch comments');
   },
 
