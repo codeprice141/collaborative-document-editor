@@ -18,11 +18,15 @@ async def websocket_notifications_endpoint(
 ):
     """Real-time user notification WebSocket endpoint (dashboard live alerts, invites, mentions)."""
     if not token:
+        await websocket.accept()
+        await websocket.send_json({"type": "error", "message": "Authentication token missing"})
         await websocket.close(code=4001)
         return
 
     user = authenticate_ws_token(token, db)
     if not user:
+        await websocket.accept()
+        await websocket.send_json({"type": "error", "message": "Authentication failed"})
         await websocket.close(code=4001)
         return
 
