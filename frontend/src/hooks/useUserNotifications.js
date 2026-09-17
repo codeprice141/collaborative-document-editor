@@ -79,9 +79,13 @@ export function useUserNotifications({ onDocumentShared, onMention } = {}) {
           }
         };
 
-        ws.onclose = () => {
+        ws.onclose = (event) => {
           clearInterval(pingIntervalRef.current);
           if (!isMounted) return;
+          // Don't loop reconnection if token was rejected
+          if (event.code === 4001 || event.code === 4003) {
+            return;
+          }
           const delay = backoffRef.current;
           backoffRef.current = Math.min(delay * 1.5, 10000);
           reconnectTimeoutRef.current = setTimeout(() => {

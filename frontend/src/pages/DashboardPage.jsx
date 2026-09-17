@@ -312,7 +312,7 @@ export default function DashboardPage() {
                 : 'Create your first document to collaborate with your team in real time.'}
             </p>
             {!search && (
-              <Button onClick={handleCreate} className="gap-2">
+              <Button onClick={() => setShowCreateModal(true)} className="gap-2 cursor-pointer">
                 <Plus size={16} /> Create First Document
               </Button>
             )}
